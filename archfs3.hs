@@ -7,6 +7,7 @@ import System -- getArgs
 import System.Directory -- doesDirectoryExist
 import System.FilePath -- pathSeparator
 import Data.List -- intercalate
+import Text.Regex.Posix
 
 usage :: String
 usage = "archfs3 <rdiff-backup directory>"
@@ -35,35 +36,16 @@ ensureRdiffBackupDir path = do
         let p3 = childdir p2 "increments"
         ensureDirectory p3 "not a valid rdiff-backup directory"
 
-exampleCurrentMirror = "current_mirror.2010-01-18T10:27:31Z.data"
-
-split :: Char -> String -> [String]
-split  _ "" = []
-split  delim string = 
-    -- split_ substr bits delim string
-       split_ "" [] delim string where
-       split_ substr bits delim ""     = bits ++ [substr]
-       split_ substr bits delim (c:cs) = 
-            if c == delim
-                then split_ "" (bits ++ [substr]) delim cs
-                else split_ (substr ++ [c]) bits delim cs
-
-currentMirrorFile :: String -> Bool
-currentMirrorFile x =
-    let bits = split '.' x in
-    if length x == length exampleCurrentMirror &&
-       (head bits == "current_mirror") &&
-       (last bits == "data")
-    then True
-    else False
-    
-
 ensureCurrentMirror :: [String] -> IO ()
 ensureCurrentMirror [] = error "missing current_mirror file"
 ensureCurrentMirror (x:xs) = do
     if currentMirrorFile x
         then return ()
         else ensureCurrentMirror xs
+        where
+            currentMirrorFile :: String -> Bool
+            currentMirrorFile x =
+                x =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
 
 main :: IO ()
 main = do
