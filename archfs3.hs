@@ -47,6 +47,17 @@ ensureCurrentMirror (x:xs) = do
             currentMirrorFile x =
                 x =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
 
+getCurrentMirror :: [String] -> String
+getCurrentMirror [] = error "missing current_mirror file"
+getCurrentMirror (x:xs) = do
+    if currentMirrorFile x
+        then x
+        else getCurrentMirror xs
+        where
+            currentMirrorFile :: String -> Bool
+            currentMirrorFile x =
+                x =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
+
 main :: IO ()
 main = do
         args <- getArgs
@@ -55,7 +66,8 @@ main = do
         ensureRdiffBackupDir path
         l <- getDirectoryContents $ childdir path "rdiff-backup-data"
         ensureCurrentMirror l
-        print l
+        let c = getCurrentMirror l
+        print c
 
 -- then, determine dates of backups therein
 
