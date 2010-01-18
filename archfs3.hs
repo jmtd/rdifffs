@@ -35,6 +35,29 @@ ensureRdiffBackupDir path = do
         let p3 = childdir p2 "increments"
         ensureDirectory p3 "not a valid rdiff-backup directory"
 
+exampleCurrentMirror = "current_mirror.2010-01-18T10:27:31Z.data"
+
+split :: Char String -> [String]
+split d s = split_ d s [] where
+    split_ _ [] a   = a
+    split_ d x:xs a = 
+
+currentMirrorFile :: String -> Bool
+currentMirrorFile x =
+    if length x == length exampleCurrentMirror &&
+       (fst $ break (=='.') x) == "current_mirror" &&
+       ".data" == snd (splitAt ((length exampleCurrentMirror) - (length ".data")) x)
+    then True
+    else False
+    
+
+ensureCurrentMirror :: [String] -> IO ()
+ensureCurrentMirror [] = error "missing current_mirror file"
+ensureCurrentMirror (x:xs) = do
+    if currentMirrorFile x
+        then return ()
+        else ensureCurrentMirror xs
+
 main :: IO ()
 main = do
         args <- getArgs
@@ -42,6 +65,7 @@ main = do
         let path = head args
         ensureRdiffBackupDir path
         l <- getDirectoryContents $ childdir path "rdiff-backup-data"
+        ensureCurrentMirror l
         print l
 
 -- then, determine dates of backups therein
