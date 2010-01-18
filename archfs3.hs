@@ -36,17 +36,6 @@ ensureRdiffBackupDir path = do
         let p3 = childdir p2 "increments"
         ensureDirectory p3 "not a valid rdiff-backup directory"
 
-ensureCurrentMirror :: [String] -> IO ()
-ensureCurrentMirror [] = error "missing current_mirror file"
-ensureCurrentMirror (x:xs) = do
-    if currentMirrorFile x
-        then return ()
-        else ensureCurrentMirror xs
-        where
-            currentMirrorFile :: String -> Bool
-            currentMirrorFile x =
-                x =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
-
 getCurrentMirror :: [String] -> String
 getCurrentMirror [] = error "missing current_mirror file"
 getCurrentMirror (x:xs) = do
@@ -65,7 +54,6 @@ main = do
         let path = head args
         ensureRdiffBackupDir path
         l <- getDirectoryContents $ childdir path "rdiff-backup-data"
-        ensureCurrentMirror l
         let c = getCurrentMirror l
         print c
 
