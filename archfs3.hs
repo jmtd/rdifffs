@@ -37,16 +37,23 @@ ensureRdiffBackupDir path = do
 
 exampleCurrentMirror = "current_mirror.2010-01-18T10:27:31Z.data"
 
-split :: Char String -> [String]
-split d s = split_ d s [] where
-    split_ _ [] a   = a
-    split_ d x:xs a = 
+split :: Char -> String -> [String]
+split  _ "" = []
+split  delim string = 
+    -- split_ substr bits delim string
+       split_ "" [] delim string where
+       split_ substr bits delim ""     = bits ++ [substr]
+       split_ substr bits delim (c:cs) = 
+            if c == delim
+                then split_ "" (bits ++ [substr]) delim cs
+                else split_ (substr ++ [c]) bits delim cs
 
 currentMirrorFile :: String -> Bool
 currentMirrorFile x =
+    let bits = split '.' x in
     if length x == length exampleCurrentMirror &&
-       (fst $ break (=='.') x) == "current_mirror" &&
-       ".data" == snd (splitAt ((length exampleCurrentMirror) - (length ".data")) x)
+       (head bits == "current_mirror") &&
+       (last bits == "data")
     then True
     else False
     
