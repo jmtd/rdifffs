@@ -2,6 +2,14 @@
 -- then accept a cmd line arg
 -- then ensure it's a directory
 -- then ensure it's an rdiff-backup directory
+-- then, determine dates of backups therein
+-- there's the current backup,
+    -- rdiff-backup-data/current_mirror.YYYY-MM-DDTHH:MM:SSZ.data
+    -- precicely one
+-- and increments
+    -- rdiff-backup-data/increments.YYYY-MM-DDTHH:MM:SSZ.dir
+    -- zero or more
+-- then, print those out
 
 import System -- getArgs
 import System.Directory -- doesDirectoryExist
@@ -47,6 +55,14 @@ getCurrentMirror (x:xs) = do
             currentMirrorFile x =
                 x =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
 
+getIncrements :: [String] -> [String]
+getIncrements files = filter (=~ "^increments\\.(....-..-..T..:..:..Z)\\.dir$") files
+
+blarg :: String -> String
+blarg bigstr = blarg_ bigstr where
+    blarg_ :: String -> (String,String,String,[String])
+    blarg_ bigstr = bigstr =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
+
 main :: IO ()
 main = do
         args <- getArgs
@@ -55,15 +71,5 @@ main = do
         ensureRdiffBackupDir path
         l <- getDirectoryContents $ childdir path "rdiff-backup-data"
         let c = getCurrentMirror l
-        print c
-
--- then, determine dates of backups therein
-
--- there's the current backup,
-    -- rdiff-backup-data/current_mirror.YYYY-MM-DDTHH:MM:SSZ.data
-    -- precicely one
--- and increments
-    -- rdiff-backup-data/increments.YYYY-MM-DDTHH:MM:SSZ.dir
-    -- zero or more
--- then, print those out
-
+        let increments = getIncrements l
+        print (c:increments)
