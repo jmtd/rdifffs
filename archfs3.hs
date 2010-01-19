@@ -45,7 +45,7 @@ ensureRdiffBackupDir path = do
         let p3 = childdir p2 "increments"
         ensureDirectory p3 "not a valid rdiff-backup directory"
 
-datetime_regex       = replace "D" "[0-9]" "\\.(D{4}-D{2}-D{2}TD{2}:D{2}:D{2}Z)\\."
+datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
 current_mirror_regex = "^current_mirror" ++ datetime_regex ++ "data$"
 increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
 
