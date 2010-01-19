@@ -58,10 +58,13 @@ getCurrentMirror (x:xs) = do
 getIncrements :: [String] -> [String]
 getIncrements files = filter (=~ "^increments\\.(....-..-..T..:..:..Z)\\.dir$") files
 
-blarg :: String -> String
-blarg bigstr = blarg_ bigstr where
-    blarg_ :: String -> (String,String,String,[String])
-    blarg_ bigstr = bigstr =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
+extractDate :: String -> String
+extractDate bigstr = do
+    let result = bigstr =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
+    let last (x,y,z,w) = w
+    head $ matchData result where
+        matchData :: (String,String,String,[String]) -> [String]
+        matchData (x,y,z,w) = w
 
 main :: IO ()
 main = do
@@ -73,3 +76,4 @@ main = do
         let c = getCurrentMirror l
         let increments = getIncrements l
         print (c:increments)
+        print (extractDate c)
