@@ -16,6 +16,7 @@ import System.Directory -- doesDirectoryExist
 import System.FilePath -- pathSeparator
 import Data.List -- intercalate
 import Text.Regex.Posix
+import Data.String.Utils -- replace (from libghc6-missingh-dev)
 
 usage :: String
 usage = "archfs3 <rdiff-backup directory>"
@@ -44,6 +45,10 @@ ensureRdiffBackupDir path = do
         let p3 = childdir p2 "increments"
         ensureDirectory p3 "not a valid rdiff-backup directory"
 
+datetime_regex       = replace "D" "[0-9]" "\\.(D{4}-D{2}-D{2}TD{2}:D{2}:D{2}Z)\\."
+current_mirror_regex = "^current_mirror" ++ datetime_regex ++ "data$"
+increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
+
 getCurrentMirror :: [String] -> String
 getCurrentMirror [] = error "missing current_mirror file"
 getCurrentMirror (x:xs) = do
@@ -53,15 +58,14 @@ getCurrentMirror (x:xs) = do
         where
             currentMirrorFile :: String -> Bool
             currentMirrorFile x =
-                x =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
+                x =~ current_mirror_regex
 
 getIncrements :: [String] -> [String]
-getIncrements files = filter (=~ "^increments\\.(....-..-..T..:..:..Z)\\.dir$") files
+getIncrements files = filter (=~ increment_regex) files
 
 extractDate :: String -> String
 extractDate bigstr = do
-    let result = bigstr =~ "^current_mirror\\.(....-..-..T..:..:..Z)\\.data$"
-    let last (x,y,z,w) = w
+    let result = bigstr =~ datetime_regex
     head $ matchData result where
         matchData :: (String,String,String,[String]) -> [String]
         matchData (x,y,z,w) = w
@@ -75,5 +79,4 @@ main = do
         l <- getDirectoryContents $ childdir path "rdiff-backup-data"
         let c = getCurrentMirror l
         let increments = getIncrements l
-        print (c:increments)
-        print (extractDate c)
+        print $ map extractDate (c:increments)
