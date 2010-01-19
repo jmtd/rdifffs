@@ -1,15 +1,4 @@
--- start with hello world
--- then accept a cmd line arg
--- then ensure it's a directory
--- then ensure it's an rdiff-backup directory
--- then, determine dates of backups therein
--- there's the current backup,
-    -- rdiff-backup-data/current_mirror.YYYY-MM-DDTHH:MM:SSZ.data
-    -- precicely one
--- and increments
-    -- rdiff-backup-data/increments.YYYY-MM-DDTHH:MM:SSZ.dir
-    -- zero or more
--- then, print those out
+-- archfs3 : (eventually) fuse filesystem for rdiff-backups, in Haskell
 
 import System -- getArgs
 import System.Directory -- doesDirectoryExist
@@ -27,23 +16,22 @@ verifyArgs [_] = return ()
 verifyArgs _ = error $
     "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
 
-ensureDirectory :: FilePath -> String -> IO ()
-ensureDirectory x errstr = do
-    b <- (doesDirectoryExist x)
-    if b == True
-        then return ()
-        else error errstr
-
-childdir :: String -> String -> String
-childdir a b = intercalate [pathSeparator] [a,b]
+isRdiffBackupDir :: FilePath -> IO Bool
+isRdiffBackupDir path = do
+        one   <- doesDirectoryExist path
+        two   <- doesDirectoryExist rdiff_backup_data
+        three <- doesDirectoryExist increments
+        return $ and [one, two, three]
+        where
+            rdiff_backup_data = path ++ pathSeparator:"rdiff-backup-data"
+            increments = rdiff_backup_data ++ pathSeparator:"increments"
 
 ensureRdiffBackupDir :: FilePath -> IO ()
 ensureRdiffBackupDir path = do
-        ensureDirectory path "not a directory"
-        let p2 = childdir path "rdiff-backup-data"
-        ensureDirectory p2 "not a valid rdiff-backup directory"
-        let p3 = childdir p2 "increments"
-        ensureDirectory p3 "not a valid rdiff-backup directory"
+    answer <- isRdiffBackupDir path
+    if answer
+        then return ()
+        else error "not a valid rdiff-backup directory"
 
 datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
 current_mirror_regex = "^current_mirror" ++ datetime_regex ++ "data$"
@@ -51,22 +39,14 @@ increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
 
 getCurrentMirror :: [String] -> String
 getCurrentMirror [] = error "missing current_mirror file"
-getCurrentMirror (x:xs) = do
-    if currentMirrorFile x
-        then x
-        else getCurrentMirror xs
-        where
-            currentMirrorFile :: String -> Bool
-            currentMirrorFile x =
-                x =~ current_mirror_regex
+getCurrentMirror (x:xs) = if (x =~ current_mirror_regex)
+    then x else getCurrentMirror xs
 
 getIncrements :: [String] -> [String]
 getIncrements files = filter (=~ increment_regex) files
 
 extractDate :: String -> String
-extractDate bigstr = do
-    let result = bigstr =~ datetime_regex
-    head $ matchData result where
+extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
         matchData :: (String,String,String,[String]) -> [String]
         matchData (x,y,z,w) = w
 
@@ -75,8 +55,9 @@ main = do
         args <- getArgs
         verifyArgs args
         let path = head args
+        let rdiff_backup_data = path ++ pathSeparator:"rdiff-backup-data"
         ensureRdiffBackupDir path
-        l <- getDirectoryContents $ childdir path "rdiff-backup-data"
+        l <- getDirectoryContents rdiff_backup_data
         let c = getCurrentMirror l
         let increments = getIncrements l
         print $ map extractDate (c:increments)
