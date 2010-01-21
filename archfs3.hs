@@ -52,9 +52,8 @@ main = do
         args <- getArgs
         verifyArgs args
         let path = head args
-        let rdiff_backup_data = path ++ pathSeparator:"rdiff-backup-data"
         ensureRdiffBackupDir path
-        l <- getDirectoryContents rdiff_backup_data
+        l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
         let c = getCurrentMirror l
         let increments = getIncrements l
         print $ map extractDate (c:increments)
