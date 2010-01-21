@@ -3,7 +3,6 @@
 import System -- getArgs
 import System.Directory -- doesDirectoryExist
 import System.FilePath -- pathSeparator
-import Data.List -- intercalate
 import Text.Regex.Posix
 import Data.String.Utils -- replace (from libghc6-missingh-dev)
 
@@ -18,10 +17,8 @@ verifyArgs _ = error $
 
 isRdiffBackupDir :: FilePath -> IO Bool
 isRdiffBackupDir path = do
-        one   <- doesDirectoryExist path
-        two   <- doesDirectoryExist rdiff_backup_data
-        three <- doesDirectoryExist increments
-        return $ and [one, two, three]
+        res <- mapM doesDirectoryExist [path, rdiff_backup_data, increments]
+        return $ and res
         where
             rdiff_backup_data = path ++ pathSeparator:"rdiff-backup-data"
             increments = rdiff_backup_data ++ pathSeparator:"increments"
