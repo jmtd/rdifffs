@@ -36,8 +36,8 @@ increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
 
 getCurrentMirror :: [String] -> String
 getCurrentMirror [] = error "missing current_mirror file"
-getCurrentMirror (x:xs) = if (x =~ current_mirror_regex)
-    then x else getCurrentMirror xs
+getCurrentMirror (x:xs) | x =~ current_mirror_regex = x
+                        | otherwise = getCurrentMirror xs
 
 getIncrements :: [String] -> [String]
 getIncrements files = filter (=~ increment_regex) files
