@@ -56,4 +56,4 @@ main = do
         l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
         let c = getCurrentMirror l
         let increments = getIncrements l
-        print $ map extractDate (c:increments)
+        mapM_ (print . extractDate) (c:increments)
