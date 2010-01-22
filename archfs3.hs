@@ -10,10 +10,12 @@ usage :: String
 usage = "archfs3 <rdiff-backup directory>"
 
 -- we only want one argument for now
-verifyArgs :: [String] -> IO ()
-verifyArgs [_] = return ()
-verifyArgs _ = error $
-    "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
+getAndVerifyArgs :: IO String
+getAndVerifyArgs = do
+    args <- getArgs
+    if length args == 1
+        then return $ head args
+        else error $ "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
 
 isRdiffBackupDir :: FilePath -> IO Bool
 isRdiffBackupDir path = do
@@ -49,9 +51,7 @@ extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
 
 main :: IO ()
 main = do
-        args <- getArgs
-        verifyArgs args
-        let path = head args
+        path <- getAndVerifyArgs
         ensureRdiffBackupDir path
         l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
         let c = getCurrentMirror l
