@@ -49,11 +49,12 @@ extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
         matchData :: (String,String,String,[String]) -> [String]
         matchData (x,y,z,w) = w
 
+getBackupDates :: [String] -> [String]
+getBackupDates files = (getCurrentMirror files) : (getIncrements files)
+
 main :: IO ()
 main = do
         path <- getAndVerifyArgs
         ensureRdiffBackupDir path
         l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
-        let c = getCurrentMirror l
-        let increments = getIncrements l
-        mapM_ (print . extractDate) (c:increments)
+        mapM_ (print . extractDate) (getBackupDates l)
