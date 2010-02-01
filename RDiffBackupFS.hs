@@ -17,12 +17,12 @@ import Text.Regex.Posix
 import Data.String.Utils -- replace (from libghc6-missingh-dev)
 
 usage :: String
-usage = "archfs3 <rdiff-backup directory>"
+usage = "archfs3 <rdiff-backup directory> <mountpoint>"
 
--- we only want one argument for now
+-- we need at least two CMDs: one for us (underlay), one for fuse (mntpoint)
 verifyArgs :: [String] -> IO ()
 verifyArgs [_] = return ()
-verifyArgs xs | length xs > 0 = return ()
+verifyArgs xs | length xs > 1 = return ()
 verifyArgs xs | otherwise = error $
     "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
 
