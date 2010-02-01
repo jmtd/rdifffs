@@ -5,11 +5,7 @@ import Foreign.C.Error
 import System.Posix.Types
 import System.Posix.Files
 import System.Posix.IO
-
 import System.Fuse
-
--- bits taken from archfs3.hs ------------------------------------------------
-
 import System.Environment -- getArgs, withArgs
 import System.Directory -- doesDirectoryExist
 import System.FilePath -- pathSeparator
