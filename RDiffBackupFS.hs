@@ -70,7 +70,6 @@ main = do
     l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
     let c = getCurrentMirror l
     let increments = getIncrements l
-    mapM_ (print . extractDate) (c:increments)
     withArgs (tail args) $ fuseMain rdiffFSOps defaultExceptionHandler
 
 -- bits taken from HelloFS.hs ------------------------------------------------
