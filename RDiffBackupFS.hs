@@ -8,10 +8,74 @@ import System.Posix.IO
 
 import System.Fuse
 
-type HT = ()
+-- bits taken from archfs3.hs ------------------------------------------------
+
+import System.Environment -- getArgs, withArgs
+import System.Directory -- doesDirectoryExist
+import System.FilePath -- pathSeparator
+import Text.Regex.Posix
+import Data.String.Utils -- replace (from libghc6-missingh-dev)
+
+usage :: String
+usage = "archfs3 <rdiff-backup directory>"
+
+-- we only want one argument for now
+verifyArgs :: [String] -> IO ()
+verifyArgs [_] = return ()
+verifyArgs xs | length xs > 0 = return ()
+verifyArgs xs | otherwise = error $
+    "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
+
+isRdiffBackupDir :: FilePath -> IO Bool
+isRdiffBackupDir path = do
+        res <- mapM doesDirectoryExist [path, rdiff_backup_data, increments]
+        return $ and res
+        where
+            rdiff_backup_data = path ++ pathSeparator:"rdiff-backup-data"
+            increments = rdiff_backup_data ++ pathSeparator:"increments"
+
+ensureRdiffBackupDir :: FilePath -> IO ()
+ensureRdiffBackupDir path = do
+    answer <- isRdiffBackupDir path
+    if answer
+        then return ()
+        else error "not a valid rdiff-backup directory"
+
+datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
+current_mirror_regex = "^current_mirror" ++ datetime_regex ++ "data$"
+increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
+
+getCurrentMirror :: [String] -> String
+getCurrentMirror [] = error "missing current_mirror file"
+getCurrentMirror (x:xs) | x =~ current_mirror_regex = x
+                        | otherwise = getCurrentMirror xs
+
+getIncrements :: [String] -> [String]
+getIncrements files = filter (=~ increment_regex) files
+
+extractDate :: String -> String
+extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
+        matchData :: (String,String,String,[String]) -> [String]
+        matchData (x,y,z,w) = w
+
+
+-- merged main from archfs3 and HelloFS --------------------------------------
 
 main :: IO ()
-main = fuseMain rdiffFSOps defaultExceptionHandler
+main = do
+    args <- getArgs
+    verifyArgs args
+    let path = head args
+    ensureRdiffBackupDir path
+    l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
+    let c = getCurrentMirror l
+    let increments = getIncrements l
+    mapM_ (print . extractDate) (c:increments)
+    withArgs (tail args) $ fuseMain rdiffFSOps defaultExceptionHandler
+
+-- bits taken from HelloFS.hs ------------------------------------------------
+
+type HT = ()
 
 rdiffFSOps :: FuseOperations HT
 rdiffFSOps = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat
