@@ -11,21 +11,21 @@ import System.Fuse
 type HT = ()
 
 main :: IO ()
-main = fuseMain helloFSOps defaultExceptionHandler
+main = fuseMain rdiffFSOps defaultExceptionHandler
 
-helloFSOps :: FuseOperations HT
-helloFSOps = defaultFuseOps { fuseGetFileStat = helloGetFileStat
-                            , fuseOpen        = helloOpen
-                            , fuseRead        = helloRead 
-                            , fuseOpenDirectory = helloOpenDirectory
-                            , fuseReadDirectory = helloReadDirectory
-                            , fuseGetFileSystemStats = helloGetFileSystemStats
+rdiffFSOps :: FuseOperations HT
+rdiffFSOps = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat
+                            , fuseOpen        = rdiffOpen
+                            , fuseRead        = rdiffRead 
+                            , fuseOpenDirectory = rdiffOpenDirectory
+                            , fuseReadDirectory = rdiffReadDirectory
+                            , fuseGetFileSystemStats = rdiffGetFileSystemStats
                             }
-helloString :: B.ByteString
-helloString = B.pack "Hello World, HFuse!\n"
+rdiffString :: B.ByteString
+rdiffString = B.pack "Hello World, HFuse!\n"
 
-helloPath :: FilePath
-helloPath = "/hello"
+rdiffPath :: FilePath
+rdiffPath = "/rdiff"
 dirStat ctx = FileStat { statEntryType = Directory
                        , statFileMode = foldr1 unionFileModes
                                           [ ownerReadMode
@@ -56,52 +56,52 @@ fileStat ctx = FileStat { statEntryType = RegularFile
                         , statFileOwner = fuseCtxUserID ctx
                         , statFileGroup = fuseCtxGroupID ctx
                         , statSpecialDeviceID = 0
-                        , statFileSize = fromIntegral $ B.length helloString
+                        , statFileSize = fromIntegral $ B.length rdiffString
                         , statBlocks = 1
                         , statAccessTime = 0
                         , statModificationTime = 0
                         , statStatusChangeTime = 0
                         }
 
-helloGetFileStat :: FilePath -> IO (Either Errno FileStat)
-helloGetFileStat "/" = do
+rdiffGetFileStat :: FilePath -> IO (Either Errno FileStat)
+rdiffGetFileStat "/" = do
     ctx <- getFuseContext
     return $ Right $ dirStat ctx
-helloGetFileStat path | path == helloPath = do
+rdiffGetFileStat path | path == rdiffPath = do
     ctx <- getFuseContext
     return $ Right $ fileStat ctx
-helloGetFileStat _ =
+rdiffGetFileStat _ =
     return $ Left eNOENT
 
-helloOpenDirectory "/" = return eOK
-helloOpenDirectory _   = return eNOENT
+rdiffOpenDirectory "/" = return eOK
+rdiffOpenDirectory _   = return eNOENT
 
-helloReadDirectory :: FilePath -> IO (Either Errno [(FilePath, FileStat)])
-helloReadDirectory "/" = do
+rdiffReadDirectory :: FilePath -> IO (Either Errno [(FilePath, FileStat)])
+rdiffReadDirectory "/" = do
     ctx <- getFuseContext
     return $ Right [(".",          dirStat  ctx)
                    ,("..",         dirStat  ctx)
-                   ,(helloName,    fileStat ctx)
+                   ,(rdiffName,    fileStat ctx)
                    ]
-    where (_:helloName) = helloPath
-helloReadDirectory _ = return (Left (eNOENT))
+    where (_:rdiffName) = rdiffPath
+rdiffReadDirectory _ = return (Left (eNOENT))
 
-helloOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-helloOpen path mode flags
-    | path == helloPath = case mode of
+rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
+rdiffOpen path mode flags
+    | path == rdiffPath = case mode of
                             ReadOnly -> return (Right ())
                             _        -> return (Left eACCES)
     | otherwise         = return (Left eNOENT)
 
 
-helloRead :: FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-helloRead path _ byteCount offset
-    | path == helloPath =
-        return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) helloString
+rdiffRead :: FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
+rdiffRead path _ byteCount offset
+    | path == rdiffPath =
+        return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) rdiffString
     | otherwise         = return $ Left eNOENT
 
-helloGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
-helloGetFileSystemStats str =
+rdiffGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
+rdiffGetFileSystemStats str =
   return $ Right $ FileSystemStats
     { fsStatBlockSize = 512
     , fsStatBlockCount = 1
