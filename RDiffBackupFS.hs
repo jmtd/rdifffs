@@ -66,18 +66,18 @@ main = do
     l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
     let c = getCurrentMirror l
     let increments = getIncrements l
-    withArgs (tail args) $ fuseMain rdiffFSOps defaultExceptionHandler
+    withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
 
 -- bits taken from HelloFS.hs ------------------------------------------------
 
 type HT = ()
 
-rdiffFSOps :: FuseOperations HT
-rdiffFSOps = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat
+rdiffFSOps :: String -> FuseOperations HT
+rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat
                             , fuseOpen        = rdiffOpen
                             , fuseRead        = rdiffRead 
                             , fuseOpenDirectory = rdiffOpenDirectory
-                            , fuseReadDirectory = rdiffReadDirectory
+                            , fuseReadDirectory = (rdiffReadDirectory rdiffCtx)
                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
                             }
 rdiffString :: B.ByteString
@@ -135,15 +135,19 @@ rdiffGetFileStat _ =
 rdiffOpenDirectory "/" = return eOK
 rdiffOpenDirectory _   = return eNOENT
 
-rdiffReadDirectory :: FilePath -> IO (Either Errno [(FilePath, FileStat)])
-rdiffReadDirectory "/" = do
+rdiffReadDirectory :: String -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+rdiffReadDirectory rdiffCtx "/" = do
     ctx <- getFuseContext
+    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
+    let c = getCurrentMirror l
+    let increments = getIncrements l
     return $ Right [(".",          dirStat  ctx)
                    ,("..",         dirStat  ctx)
                    ,(rdiffName,    fileStat ctx)
+                   ,(c,            dirStat  ctx)
                    ]
     where (_:rdiffName) = rdiffPath
-rdiffReadDirectory _ = return (Left (eNOENT))
+rdiffReadDirectory _ _ = return (Left (eNOENT))
 
 rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 rdiffOpen path mode flags
