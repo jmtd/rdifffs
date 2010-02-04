@@ -129,8 +129,15 @@ rdiffGetFileStat _ "/" = do
 rdiffGetFileStat _ path | path == rdiffPath = do
     ctx <- getFuseContext
     return $ Right $ fileStat ctx
-rdiffGetFileStat _ _ =
-    return $ Left eNOENT
+rdiffGetFileStat rdiffCtx fpath = do
+    ctx <- getFuseContext
+    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
+    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    if path `elem` dates
+        then return $ Right $ dirStat ctx
+        else return $ Left eNOENT
+    where
+        (_:path) = fpath
 
 rdiffOpenDirectory "/" = return eOK
 rdiffOpenDirectory _   = return eNOENT
