@@ -17,6 +17,11 @@ usage = "archfs3 <rdiff-backup directory> <mountpoint>"
 
 type RdiffContext = String
 
+data RdiffBackup = Current String | Increment String deriving (Eq,Show)
+getRdiffBackupDate :: RdiffBackup -> String
+getRdiffBackupDate (Current x) = x
+getRdiffBackupDate (Increment x) = x
+
 -- we need at least two CMDs: one for us (underlay), one for fuse (mntpoint)
 verifyArgs :: [String] -> IO ()
 verifyArgs [_] = return ()
@@ -43,13 +48,13 @@ datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
 current_mirror_regex = "^current_mirror" ++ datetime_regex ++ "data$"
 increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
 
-getCurrentMirror :: [String] -> String
+getCurrentMirror :: [String] -> RdiffBackup
 getCurrentMirror [] = error "missing current_mirror file"
-getCurrentMirror (x:xs) | x =~ current_mirror_regex = extractDate x
+getCurrentMirror (x:xs) | x =~ current_mirror_regex = Current $ extractDate x
                         | otherwise = getCurrentMirror xs
 
-getIncrements :: [String] -> [String]
-getIncrements files = map extractDate $ filter (=~ increment_regex) files
+getIncrements :: [String] -> [RdiffBackup]
+getIncrements files = map (Increment . extractDate) $ filter (=~ increment_regex) files
 
 extractDate :: String -> String
 extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
@@ -57,7 +62,7 @@ extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
         matchData (x,y,z,w) = w
 
 -- TODO: better name
-getDates :: RdiffContext -> IO [String]
+getDates :: RdiffContext -> IO [RdiffBackup]
 getDates rdiffCtx = do
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
     return $ (getCurrentMirror l) : (getIncrements l)
@@ -136,7 +141,7 @@ rdiffGetFileStat _ path | path == rdiffPath = do
 rdiffGetFileStat rdiffCtx fpath = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
-    if path `elem` dates
+    if path `elem` (map getRdiffBackupDate dates)
         then return $ Right $ dirStat ctx
         else return $ Left eNOENT
     where
@@ -146,7 +151,7 @@ rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 rdiffOpenDirectory _ "/" = return eOK
 rdiffOpenDirectory rdiffCtx fdir = do
     dates <- getDates rdiffCtx
-    if dir `elem` dates 
+    if dir `elem` (map getRdiffBackupDate dates)
         then return eOK
         else return eNOENT
     where (_:dir) = fdir
@@ -154,15 +159,13 @@ rdiffOpenDirectory rdiffCtx fdir = do
 rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
-    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
     dates <- getDates rdiffCtx
-    if "/" == fdir then return $ Right $ dirs ctx dates
-        else
-            if dir == (getCurrentMirror l)
-                then return $ Right $ dirs ctx ["HAI"]
-                else if dir `elem` (getIncrements l)
-                    then return $ Right $ dirs ctx ["OMG"]
-                    else return (Left (eNOENT)) 
+    if "/" == fdir then return $ Right $ dirs ctx (map getRdiffBackupDate dates)
+        else if (Current dir) `elem` dates
+            then return $ Right $ dirs ctx ["HAI"]
+            else if (Increment dir) `elem` dates
+                then return $ Right $ dirs ctx ["OMG"]
+                else return (Left (eNOENT)) 
     where (_:dir) = fdir
           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
