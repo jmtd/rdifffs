@@ -45,11 +45,11 @@ increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
 
 getCurrentMirror :: [String] -> String
 getCurrentMirror [] = error "missing current_mirror file"
-getCurrentMirror (x:xs) | x =~ current_mirror_regex = x
+getCurrentMirror (x:xs) | x =~ current_mirror_regex = extractDate x
                         | otherwise = getCurrentMirror xs
 
 getIncrements :: [String] -> [String]
-getIncrements files = filter (=~ increment_regex) files
+getIncrements files = map extractDate $ filter (=~ increment_regex) files
 
 extractDate :: String -> String
 extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
@@ -60,7 +60,7 @@ extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
 getDates :: RdiffContext -> IO [String]
 getDates rdiffCtx = do
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    return $ map extractDate $ (getCurrentMirror l):(getIncrements l)
+    return $ (getCurrentMirror l) : (getIncrements l)
 
 -- merged main from archfs3 and HelloFS --------------------------------------
 
@@ -158,9 +158,9 @@ rdiffReadDirectory rdiffCtx fdir = do
     dates <- getDates rdiffCtx
     if "/" == fdir then return $ Right $ dirs ctx dates
         else
-            if dir == (extractDate $ getCurrentMirror l)
+            if dir == (getCurrentMirror l)
                 then return $ Right $ dirs ctx ["HAI"]
-                else if dir `elem` (map extractDate (getIncrements l))
+                else if dir `elem` (getIncrements l)
                     then return $ Right $ dirs ctx ["OMG"]
                     else return (Left (eNOENT)) 
     where (_:dir) = fdir
