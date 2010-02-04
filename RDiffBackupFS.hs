@@ -15,6 +15,8 @@ import Data.String.Utils -- replace (from libghc6-missingh-dev)
 usage :: String
 usage = "archfs3 <rdiff-backup directory> <mountpoint>"
 
+type RdiffContext = String
+
 -- we need at least two CMDs: one for us (underlay), one for fuse (mntpoint)
 verifyArgs :: [String] -> IO ()
 verifyArgs [_] = return ()
@@ -72,7 +74,7 @@ main = do
 
 type HT = ()
 
-rdiffFSOps :: String -> FuseOperations HT
+rdiffFSOps :: RdiffContext -> FuseOperations HT
 rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = (rdiffGetFileStat rdiffCtx)
                             , fuseOpen        = rdiffOpen
                             , fuseRead        = rdiffRead 
@@ -122,7 +124,7 @@ fileStat ctx = FileStat { statEntryType = RegularFile
                         , statStatusChangeTime = 0
                         }
 
-rdiffGetFileStat :: String -> FilePath -> IO (Either Errno FileStat)
+rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 rdiffGetFileStat _ "/" = do
     ctx <- getFuseContext
     return $ Right $ dirStat ctx
@@ -139,8 +141,9 @@ rdiffGetFileStat rdiffCtx fpath = do
     where
         (_:path) = fpath
 
+rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 rdiffOpenDirectory _ "/" = return eOK
-rdiffOpenDirectory rdiffCtx fdir  = do
+rdiffOpenDirectory rdiffCtx fdir = do
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
     let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
     if dir `elem` dates 
@@ -148,7 +151,7 @@ rdiffOpenDirectory rdiffCtx fdir  = do
         else return eNOENT
     where (_:dir) = fdir
 
-rdiffReadDirectory :: String -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
