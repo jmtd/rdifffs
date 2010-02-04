@@ -73,7 +73,7 @@ main = do
 type HT = ()
 
 rdiffFSOps :: String -> FuseOperations HT
-rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat
+rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = (rdiffGetFileStat rdiffCtx)
                             , fuseOpen        = rdiffOpen
                             , fuseRead        = rdiffRead 
                             , fuseOpenDirectory = rdiffOpenDirectory
@@ -122,14 +122,14 @@ fileStat ctx = FileStat { statEntryType = RegularFile
                         , statStatusChangeTime = 0
                         }
 
-rdiffGetFileStat :: FilePath -> IO (Either Errno FileStat)
-rdiffGetFileStat "/" = do
+rdiffGetFileStat :: String -> FilePath -> IO (Either Errno FileStat)
+rdiffGetFileStat _ "/" = do
     ctx <- getFuseContext
     return $ Right $ dirStat ctx
-rdiffGetFileStat path | path == rdiffPath = do
+rdiffGetFileStat _ path | path == rdiffPath = do
     ctx <- getFuseContext
     return $ Right $ fileStat ctx
-rdiffGetFileStat _ =
+rdiffGetFileStat _ _ =
     return $ Left eNOENT
 
 rdiffOpenDirectory "/" = return eOK
