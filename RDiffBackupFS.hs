@@ -155,7 +155,16 @@ rdiffReadDirectory rdiffCtx "/" = do
     let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
     return $ Right $ map (\x -> (x, dirStat ctx)) ([".", ".."] ++ dates)
     where (_:rdiffName) = rdiffPath
-rdiffReadDirectory _ _ = return (Left (eNOENT))
+rdiffReadDirectory rdiffCtx fdir = do
+    ctx <- getFuseContext
+    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
+    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    if dir `elem` dates 
+        then return $ Right $ map (\x -> (x, dirStat ctx)) ([".", ".."])
+        else return (Left (eNOENT)) 
+    where (_:dir) = fdir
+          (_:rdiffName) = rdiffPath
+rrdiffReadDirectory _ _ = return (Left (eNOENT))
 
 rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 rdiffOpen path mode flags
