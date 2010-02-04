@@ -158,10 +158,11 @@ rdiffReadDirectory rdiffCtx "/" = do
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
-    if dir `elem` dates 
-        then return $ Right $ map (\x -> (x, dirStat ctx)) ([".", ".."])
-        else return (Left (eNOENT)) 
+    if dir == (extractDate $ getCurrentMirror l)
+        then return $ Right $ map (\x -> (x, dirStat ctx)) ([".", "..", "HAI"])
+        else if dir `elem` (map extractDate (getIncrements l))
+            then return $ Right $ map (\x -> (x, dirStat ctx)) ([".", "..", "OMG"])
+            else return (Left (eNOENT)) 
     where (_:dir) = fdir
           (_:rdiffName) = rdiffPath
 rrdiffReadDirectory _ _ = return (Left (eNOENT))
