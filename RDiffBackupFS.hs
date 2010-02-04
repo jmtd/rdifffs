@@ -56,6 +56,11 @@ extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
         matchData :: (String,String,String,[String]) -> [String]
         matchData (x,y,z,w) = w
 
+-- TODO: better name
+getDates :: RdiffContext -> IO [String]
+getDates rdiffCtx = do
+    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
+    return $ map extractDate $ (getCurrentMirror l):(getIncrements l)
 
 -- merged main from archfs3 and HelloFS --------------------------------------
 
@@ -65,9 +70,6 @@ main = do
     verifyArgs args
     let path = head args
     ensureRdiffBackupDir path
-    l <- getDirectoryContents $ path ++ pathSeparator:"rdiff-backup-data"
-    let c = getCurrentMirror l
-    let increments = getIncrements l
     withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
 
 -- bits taken from HelloFS.hs ------------------------------------------------
@@ -133,8 +135,7 @@ rdiffGetFileStat _ path | path == rdiffPath = do
     return $ Right $ fileStat ctx
 rdiffGetFileStat rdiffCtx fpath = do
     ctx <- getFuseContext
-    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    dates <- getDates rdiffCtx
     if path `elem` dates
         then return $ Right $ dirStat ctx
         else return $ Left eNOENT
@@ -144,8 +145,7 @@ rdiffGetFileStat rdiffCtx fpath = do
 rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 rdiffOpenDirectory _ "/" = return eOK
 rdiffOpenDirectory rdiffCtx fdir = do
-    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    dates <- getDates rdiffCtx
     if dir `elem` dates 
         then return eOK
         else return eNOENT
@@ -155,7 +155,7 @@ rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, F
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    dates <- getDates rdiffCtx
     if "/" == fdir then return $ Right $ dirs ctx dates
         else
             if dir == (extractDate $ getCurrentMirror l)
