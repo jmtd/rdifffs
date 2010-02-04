@@ -149,23 +149,19 @@ rdiffOpenDirectory rdiffCtx fdir  = do
     where (_:dir) = fdir
 
 rdiffReadDirectory :: String -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
-rdiffReadDirectory rdiffCtx "/" = do
-    ctx <- getFuseContext
-    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
-    return $ Right $ map (\x -> (x, dirStat ctx)) ([".", ".."] ++ dates)
-    where (_:rdiffName) = rdiffPath
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    if dir == (extractDate $ getCurrentMirror l)
-        then return $ Right $ map (\x -> (x, dirStat ctx)) ([".", "..", "HAI"])
-        else if dir `elem` (map extractDate (getIncrements l))
-            then return $ Right $ map (\x -> (x, dirStat ctx)) ([".", "..", "OMG"])
-            else return (Left (eNOENT)) 
+    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    if "/" == fdir then return $ Right $ dirs ctx dates
+        else
+            if dir == (extractDate $ getCurrentMirror l)
+                then return $ Right $ dirs ctx ["HAI"]
+                else if dir `elem` (map extractDate (getIncrements l))
+                    then return $ Right $ dirs ctx ["OMG"]
+                    else return (Left (eNOENT)) 
     where (_:dir) = fdir
-          (_:rdiffName) = rdiffPath
-rrdiffReadDirectory _ _ = return (Left (eNOENT))
+          dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
 rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 rdiffOpen path mode flags
