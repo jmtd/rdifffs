@@ -139,13 +139,8 @@ rdiffReadDirectory :: String -> FilePath -> IO (Either Errno [(FilePath, FileSta
 rdiffReadDirectory rdiffCtx "/" = do
     ctx <- getFuseContext
     l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
-    let c = getCurrentMirror l
-    let increments = getIncrements l
-    return $ Right [(".",          dirStat  ctx)
-                   ,("..",         dirStat  ctx)
-                   ,(rdiffName,    fileStat ctx)
-                   ,(c,            dirStat  ctx)
-                   ]
+    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    return $ Right $ map (\x -> (x, dirStat ctx)) ([".", ".."] ++ dates)
     where (_:rdiffName) = rdiffPath
 rdiffReadDirectory _ _ = return (Left (eNOENT))
 
