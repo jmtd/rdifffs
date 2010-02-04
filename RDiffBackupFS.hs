@@ -76,7 +76,7 @@ rdiffFSOps :: String -> FuseOperations HT
 rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = (rdiffGetFileStat rdiffCtx)
                             , fuseOpen        = rdiffOpen
                             , fuseRead        = rdiffRead 
-                            , fuseOpenDirectory = rdiffOpenDirectory
+                            , fuseOpenDirectory = (rdiffOpenDirectory rdiffCtx)
                             , fuseReadDirectory = (rdiffReadDirectory rdiffCtx)
                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
                             }
@@ -139,8 +139,14 @@ rdiffGetFileStat rdiffCtx fpath = do
     where
         (_:path) = fpath
 
-rdiffOpenDirectory "/" = return eOK
-rdiffOpenDirectory _   = return eNOENT
+rdiffOpenDirectory _ "/" = return eOK
+rdiffOpenDirectory rdiffCtx fdir  = do
+    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
+    let dates = map extractDate $ (getCurrentMirror l):(getIncrements l)
+    if dir `elem` dates 
+        then return eOK
+        else return eNOENT
+    where (_:dir) = fdir
 
 rdiffReadDirectory :: String -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 rdiffReadDirectory rdiffCtx "/" = do
