@@ -137,7 +137,6 @@ rdiffGetFileStat rdiffCtx fpath = do
 rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 rdiffGetCurrentFileStat rdiffCtx fpath = do
     ctx <- getFuseContext
-    dates <- getDates rdiffCtx
     tuple <- fileNameToTuple realPath
     return $ Right $ snd tuple
     where
