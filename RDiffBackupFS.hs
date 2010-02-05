@@ -173,8 +173,14 @@ rdiffReadCurrentDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(File
 rdiffReadCurrentDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents rdiffCtx
-    return $ Right $ dirs ctx $ filter (/= "rdiff-backup-data") l
-    where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
+    ret <- mapM (fileNameToTuple rdiffCtx) $ filter (/= "rdiff-backup-data") l
+    return $ Right ret
+
+fileNameToTuple :: RdiffContext -> String -> IO (String, FileStat)
+fileNameToTuple rdiffCtx f = do
+    ctx <- getFuseContext
+    isFile <- doesFileExist (rdiffCtx ++ pathSeparator:f)
+    return (f, (if isFile then fileStat else dirStat) ctx)
 
 rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 rdiffOpen path mode flags
