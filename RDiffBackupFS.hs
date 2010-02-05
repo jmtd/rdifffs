@@ -154,15 +154,19 @@ rdiffOpenDirectory rdiffCtx fdir = do
           prefix = head $ splitDirectories dir
 
 rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+rdiffReadDirectory rdiffCtx "/" = do
+    ctx <- getFuseContext
+    dates <- getDates rdiffCtx
+    return $ Right $ dirs ctx (map getRdiffBackupDate dates)
+    where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
-    if "/" == fdir then return $ Right $ dirs ctx (map getRdiffBackupDate dates)
-        else if (Current prefix) `elem` dates
-            then rdiffReadCurrentDirectory rdiffCtx fdir
-            else if (Increment prefix) `elem` dates
-                then return $ Right $ dirs ctx ["OMG"]
-                else return (Left (eNOENT)) 
+    if (Current prefix) `elem` dates
+        then rdiffReadCurrentDirectory rdiffCtx fdir
+        else if (Increment prefix) `elem` dates
+             then return $ Right $ dirs ctx ["OMG"]
+             else return (Left (eNOENT)) 
     where (_:dir) = fdir
           prefix = head $ splitDirectories dir
           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
