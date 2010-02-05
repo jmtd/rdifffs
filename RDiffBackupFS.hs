@@ -29,13 +29,15 @@ verifyArgs xs | length xs > 1 = return ()
 verifyArgs xs | otherwise = error $
     "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
 
+-- convenience function for filepaths
+(//) :: FilePath -> FilePath -> FilePath
+(//) a b = a ++ pathSeparator:b
+
 isRdiffBackupDir :: FilePath -> IO Bool
 isRdiffBackupDir path = do
-        res <- mapM doesDirectoryExist [path, rdiff_backup_data, increments]
-        return $ and res
-        where
-            rdiff_backup_data = path ++ pathSeparator:"rdiff-backup-data"
-            increments = rdiff_backup_data ++ pathSeparator:"increments"
+    res <- mapM doesDirectoryExist
+        [path, path // "rdiff-backup-data", path // "rdiff-backup-data" // "increments" ]
+    (return . and) res
 
 ensureRdiffBackupDir :: FilePath -> IO ()
 ensureRdiffBackupDir path = do
@@ -64,7 +66,7 @@ extractDate bigstr = head $ matchData (bigstr =~ datetime_regex) where
 -- TODO: better name
 getDates :: RdiffContext -> IO [RdiffBackup]
 getDates rdiffCtx = do
-    l <- getDirectoryContents $ rdiffCtx ++ pathSeparator:"rdiff-backup-data"
+    l <- getDirectoryContents $ rdiffCtx // "rdiff-backup-data"
     return $ (getCurrentMirror l) : (getIncrements l)
 
 -- merged main from archfs3 and HelloFS --------------------------------------
@@ -173,7 +175,7 @@ rdiffReadCurrentDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(File
 rdiffReadCurrentDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents rdiffCtx
-    ret <- mapM fileNameToTuple $ map ((rdiffCtx ++) . (pathSeparator :)) $ filter (/= "rdiff-backup-data") l
+    ret <- mapM fileNameToTuple $ map (rdiffCtx //) $ filter (/= "rdiff-backup-data") l
     return $ Right ret
 
 fileNameToTuple :: String -> IO (String, FileStat)
