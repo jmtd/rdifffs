@@ -159,7 +159,7 @@ rdiffReadCurrentDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(File
 rdiffReadCurrentDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     l <- getDirectoryContents rdiffCtx
-    ret <- mapM fileNameToTuple $ map (rdiffCtx </>) $ filter (/= "rdiff-backup-data") l
+    ret <- mapM fileNameToTuple $ filter (/= "rdiff-backup-data") l
     return $ Right ret
 
 fileNameToTuple :: String -> IO (String, FileStat)
