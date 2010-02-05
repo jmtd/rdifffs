@@ -65,18 +65,6 @@ getDates rdiffCtx = do
     l <- getDirectoryContents $ rdiffCtx </> "rdiff-backup-data"
     return $ (getCurrentMirror l) : (getIncrements l)
 
--- merged main from archfs3 and HelloFS --------------------------------------
-
-main :: IO ()
-main = do
-    args <- getArgs
-    verifyArgs args
-    path <- canonicalizePath $ head args
-    ensureRdiffBackupDir path
-    withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
-
--- bits taken from HelloFS.hs ------------------------------------------------
-
 type HT = ()
 
 rdiffFSOps :: RdiffContext -> FuseOperations HT
@@ -205,3 +193,11 @@ rdiffGetFileSystemStats str =
     , fsStatFilesFree = 10
     , fsStatMaxNameLength = 255
     }
+
+main :: IO ()
+main = do
+    args <- getArgs
+    verifyArgs args
+    path <- canonicalizePath $ head args
+    ensureRdiffBackupDir path
+    withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
