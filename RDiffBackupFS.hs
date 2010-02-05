@@ -162,12 +162,19 @@ rdiffReadDirectory rdiffCtx fdir = do
     dates <- getDates rdiffCtx
     if "/" == fdir then return $ Right $ dirs ctx (map getRdiffBackupDate dates)
         else if (Current dir) `elem` dates
-            then return $ Right $ dirs ctx ["HAI"]
+            then rdiffReadCurrentDirectory rdiffCtx fdir
             else if (Increment dir) `elem` dates
                 then return $ Right $ dirs ctx ["OMG"]
                 else return (Left (eNOENT)) 
     where (_:dir) = fdir
           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
+
+rdiffReadCurrentDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+rdiffReadCurrentDirectory rdiffCtx fdir = do
+    ctx <- getFuseContext
+    l <- getDirectoryContents rdiffCtx
+    return $ Right $ dirs ctx $ filter (/= "rdiff-backup-data") l
+    where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
 rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 rdiffOpen path mode flags
