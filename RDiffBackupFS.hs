@@ -127,32 +127,44 @@ rdiffGetFileStat _ path | path == rdiffPath = do
 rdiffGetFileStat rdiffCtx fpath = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
-    if path `elem` (map getRdiffBackupDate dates)
-        then return $ Right $ dirStat ctx
+    if prefix `elem` (map getRdiffBackupDate dates)
+        then rdiffGetCurrentFileStat rdiffCtx fpath
         else return $ Left eNOENT
     where
         (_:path) = fpath
+        prefix = head $ splitDirectories path
+
+rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
+rdiffGetCurrentFileStat rdiffCtx fpath = do
+    ctx <- getFuseContext
+    dates <- getDates rdiffCtx
+    return $ Right $ dirStat ctx
+    where
+        (_:path) = fpath
+        prefix = head $ splitDirectories path
 
 rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 rdiffOpenDirectory _ "/" = return eOK
 rdiffOpenDirectory rdiffCtx fdir = do
     dates <- getDates rdiffCtx
-    if dir `elem` (map getRdiffBackupDate dates)
+    if prefix `elem` (map getRdiffBackupDate dates)
         then return eOK
         else return eNOENT
     where (_:dir) = fdir
+          prefix = head $ splitDirectories dir
 
 rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
     if "/" == fdir then return $ Right $ dirs ctx (map getRdiffBackupDate dates)
-        else if (Current dir) `elem` dates
+        else if (Current prefix) `elem` dates
             then rdiffReadCurrentDirectory rdiffCtx fdir
-            else if (Increment dir) `elem` dates
+            else if (Increment prefix) `elem` dates
                 then return $ Right $ dirs ctx ["OMG"]
                 else return (Left (eNOENT)) 
     where (_:dir) = fdir
+          prefix = head $ splitDirectories dir
           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
 rdiffReadCurrentDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
