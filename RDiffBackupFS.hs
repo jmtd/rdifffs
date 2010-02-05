@@ -138,10 +138,12 @@ rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat
 rdiffGetCurrentFileStat rdiffCtx fpath = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
-    return $ Right $ dirStat ctx
+    tuple <- fileNameToTuple realPath
+    return $ Right $ snd tuple
     where
         (_:path) = fpath
         prefix = head $ splitDirectories path
+        realPath = joinPath $ rdiffCtx:(tail $ splitDirectories path)
 
 rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 rdiffOpenDirectory _ "/" = return eOK
