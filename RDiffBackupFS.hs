@@ -7,8 +7,8 @@ import System.Posix.Files
 import System.Posix.IO
 import System.Fuse
 import System.Environment -- getArgs, withArgs
-import System.Directory -- doesDirectoryExist
-import System.FilePath -- pathSeparator
+import System.Directory -- doesDirectoryExist, canonicalizePath
+import System.FilePath -- pathSeparator, </>
 import Text.Regex.Posix
 import Data.String.Utils -- replace (from libghc6-missingh-dev)
 
@@ -71,7 +71,7 @@ main :: IO ()
 main = do
     args <- getArgs
     verifyArgs args
-    let path = head args
+    path <- canonicalizePath $ head args
     ensureRdiffBackupDir path
     withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
 
