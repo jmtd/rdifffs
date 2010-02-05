@@ -172,12 +172,20 @@ rdiffReadDirectory rdiffCtx fdir = do
           prefix = head $ splitDirectories dir
           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
+-- fdir might be /<current> or /<current>/subdir...
+-- maybe getDirectoryContents rdiffCtx </> <remainder> ?
 rdiffReadCurrentDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 rdiffReadCurrentDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
-    l <- getDirectoryContents rdiffCtx
-    ret <- mapM (fileNameToTuple . (rdiffCtx </>)) $ filter (/= "rdiff-backup-data") l
-    return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
+    if length(splitDirectories dir) == 1
+        then do
+            l <- getDirectoryContents rdiffCtx
+            ret <- mapM (fileNameToTuple . (rdiffCtx </>)) $ filter (/= "rdiff-backup-data") l
+            return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
+        else
+    where (_:dir) = fdir
+          prefix = head $ splitDirectories dir
+          dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
 fileNameToTuple :: FilePath -> IO (String, FileStat)
 fileNameToTuple f = do
