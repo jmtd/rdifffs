@@ -117,6 +117,23 @@ fileStat ctx = FileStat { statEntryType = RegularFile
                         , statStatusChangeTime = 0
                         }
 
+linkStat ctx = FileStat { statEntryType = SymbolicLink
+                        , statFileMode = foldr1 unionFileModes
+                                           [ ownerReadMode
+                                           , groupReadMode
+                                           , otherReadMode
+                                           ]
+                        , statLinkCount = 1
+                        , statFileOwner = fuseCtxUserID ctx
+                        , statFileGroup = fuseCtxGroupID ctx
+                        , statSpecialDeviceID = 0
+                        , statFileSize = fromIntegral $ B.length rdiffString
+                        , statBlocks = 1
+                        , statAccessTime = 0
+                        , statModificationTime = 0
+                        , statStatusChangeTime = 0
+                        }
+
 rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 rdiffGetFileStat _ "/" = do
     ctx <- getFuseContext
@@ -158,7 +175,7 @@ rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, F
 rdiffReadDirectory rdiffCtx "/" = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
-    return $ Right $ dirs ctx (map getRdiffBackupDate dates)
+    return $ Right $ (dirs ctx (map getRdiffBackupDate dates)) ++ ([("current", linkStat ctx)])
     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 rdiffReadDirectory rdiffCtx fdir = do
     ctx <- getFuseContext
