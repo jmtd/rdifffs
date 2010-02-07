@@ -238,7 +238,22 @@ rdiffReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 rdiffReadSymbolicLink rdiffCtx "/current" = do
     dates <- getDates rdiffCtx
     return $ Right $ getRdiffBackupDate $ head dates -- XXX: relies on getDates prefixing Current
-rdiffReadSymbolicLink _ _ = return $ Left eNOSYS
+rdiffReadSymbolicLink rdiffCtx fpath = do
+    dates <- getDates rdiffCtx
+    if prefix `elem` (map getRdiffBackupDate dates)
+        then rdiffCurrentReadSymbolicLink rdiffCtx fpath
+        else return $ Left eNOSYS
+    where
+        (_:path) = fpath
+        prefix = head $ splitDirectories path
+
+rdiffCurrentReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
+rdiffCurrentReadSymbolicLink rdiffCtx fpath = do
+    target <- readSymbolicLink $ rdiffCtx </> remainder
+    return $ Right $ target
+    where
+        (_:path) = fpath
+        remainder = joinPath $ tail $ splitDirectories path
 
 main :: IO ()
 main = do
