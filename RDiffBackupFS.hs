@@ -138,6 +138,9 @@ rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 rdiffGetFileStat _ "/" = do
     ctx <- getFuseContext
     return $ Right $ dirStat ctx
+rdiffGetFileStat _ "/current" = do
+    ctx <- getFuseContext
+    return $ Right $ linkStat ctx
 rdiffGetFileStat _ path | path == rdiffPath = do
     ctx <- getFuseContext
     return $ Right $ fileStat ctx
