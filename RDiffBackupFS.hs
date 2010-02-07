@@ -203,8 +203,12 @@ rdiffReadCurrentDirectory rdiffCtx fdir = do
 fileNameToTuple :: FilePath -> IO (String, FileStat)
 fileNameToTuple f = do
     ctx <- getFuseContext
-    isFile <- doesFileExist f
-    return (f, (if isFile then fileStat else dirStat) ctx)
+    stat <- getFileStatus f
+    if (isSymbolicLink stat)
+        then return (f, linkStat ctx)
+        else if (isDirectory stat)
+            then return (f, dirStat ctx)
+            else return (f, fileStat ctx) -- XXX: default
 
 rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 rdiffOpen path mode flags
