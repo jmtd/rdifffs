@@ -142,9 +142,6 @@ rdiffGetFileStat _ "/" = do
 rdiffGetFileStat _ "/current" = do
     ctx <- getFuseContext
     return $ Right $ linkStat ctx
-rdiffGetFileStat _ path | path == rdiffPath = do
-    ctx <- getFuseContext
-    return $ Right $ fileStat ctx
 rdiffGetFileStat rdiffCtx fpath = do
     ctx <- getFuseContext
     dates <- getDates rdiffCtx
@@ -203,9 +200,10 @@ rdiffReadCurrentDirectory rdiffCtx fdir = do
 fileNameToTuple :: FilePath -> IO (String, FileStat)
 fileNameToTuple f = do
     ctx <- getFuseContext
-    stat <- getFileStatus f
+    stat <- getSymbolicLinkStatus f
     if (isSymbolicLink stat)
-        then return (f, linkStat ctx)
+        then do
+            return (f, linkStat ctx)
         else if (isDirectory stat)
             then return (f, dirStat ctx)
             else return (f, fileStat ctx) -- XXX: default
