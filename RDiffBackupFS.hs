@@ -74,6 +74,7 @@ rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = (rdiffGetFileStat rdiff
                             , fuseOpenDirectory = (rdiffOpenDirectory rdiffCtx)
                             , fuseReadDirectory = (rdiffReadDirectory rdiffCtx)
                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
+                            , fuseReadSymbolicLink = (rdiffReadSymbolicLink rdiffCtx)
                             }
 rdiffString :: B.ByteString
 rdiffString = B.pack "Hello World, HFuse!\n"
@@ -230,6 +231,12 @@ rdiffGetFileSystemStats str =
     , fsStatFilesFree = 10
     , fsStatMaxNameLength = 255
     }
+
+rdiffReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
+rdiffReadSymbolicLink rdiffCtx "/current" = do
+    dates <- getDates rdiffCtx
+    return $ Right $ getRdiffBackupDate $ head dates -- XXX: relies on getDates prefixing Current
+rdiffReadSymbolicLink _ _ = return $ Left eNOSYS
 
 main :: IO ()
 main = do
