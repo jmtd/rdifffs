@@ -294,10 +294,12 @@ fairly useful exception types.
 >           realpath = rdiffCtx </> remainder
 
 > rdiffCurrentRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffCurrentRead rdiffCtx path _ byteCount offset
->     | path == rdiffPath = return $ Right $ B.take (fromIntegral byteCount) $
->                                    B.drop (fromIntegral offset) rdiffString
->     | otherwise         = return $ Left eNOENT
+> rdiffCurrentRead rdiffCtx fpath _ byteCount offset = do
+>     stuff <- readFile realpath
+>     return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) $ B.pack stuff
+>     where (_:path) = fpath
+>           remainder = joinPath $ tail $ splitDirectories path
+>           realpath = rdiffCtx </> remainder
 
 Stub increment functions (for now)
 
