@@ -11,6 +11,7 @@
 > import System.FilePath -- pathSeparator, </>
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
+> import System.Posix.Directory
 
 The main method is so short I feel it's best to get it out of the way here.
 
@@ -173,7 +174,9 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 >     dates <- getDates rdiffCtx
 >     if prefix `elem` (map getRdiffBackupDate dates)
 >         then return eOK
->         else return eNOENT
+>         else if (Current prefix) `elem` dates
+>           then rdiffCurrentOpenDirectory rdiffCtx fdir
+>           else return eNOENT
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
 
@@ -279,3 +282,23 @@ current backup tree.
 >     where (_:dir) = fdir
 >           remainder = joinPath $ tail $ splitDirectories dir
 
+This is a really ugly function. We need to call readdir(2) on the underlying
+directory and try to pass any error on up to our readdir(2) response. Hence
+using the Posix library and trying to handle the error. Another approach might
+be to just getDirectoryContents, which is in System.Directory and returns some
+fairly useful exception types.
+
+> rdiffCurrentOpenDirectory :: RdiffContext -> FilePath -> IO Errno
+> rdiffCurrentOpenDirectory rdiffCtx fpath = do
+>     ret <- catch (toTry $ rdiffCtx </> remainder) handler
+>     return ret
+>     where (_:path) = fpath
+>           remainder = joinPath $ tail $ splitDirectories path
+>           toTry :: FilePath -> IO Errno
+>           toTry path = do
+>               ds <- openDirStream path
+>               closeDirStream ds
+>               return eOK
+>           handler :: IOError -> IO Errno
+>           handler e = do
+>               return eACCES
