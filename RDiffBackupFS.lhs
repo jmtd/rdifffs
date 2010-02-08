@@ -81,7 +81,7 @@ The main method is so short I feel it's best to get it out of the way here.
 > rdiffFSOps :: RdiffContext -> FuseOperations HT
 > rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat rdiffCtx
 >                             , fuseOpen        = rdiffOpen rdiffCtx
->                             , fuseRead        = rdiffRead 
+>                             , fuseRead        = rdiffRead rdiffCtx
 >                             , fuseOpenDirectory = rdiffOpenDirectory rdiffCtx
 >                             , fuseReadDirectory = rdiffReadDirectory rdiffCtx
 >                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
@@ -181,11 +181,13 @@ directory and the /current symlink within.
 >         IncrementBackup -> rdiffIncrementOpen rdiffCtx path mode flags
 >         Neither         -> return $ Left eNOENT
 
-> rdiffRead :: FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffRead path _ byteCount offset
->     | path == rdiffPath =
->         return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) rdiffString
->     | otherwise         = return $ Left eNOENT
+> rdiffRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
+> rdiffRead rdiffCtx path ht byteCount offset = do
+>     which <- whichBackup rdiffCtx path
+>     case which of
+>         CurrentBackup   -> rdiffCurrentRead   rdiffCtx path ht byteCount offset
+>         IncrementBackup -> rdiffIncrementRead rdiffCtx path ht byteCount offset
+>         Neither         -> return $ Left eNOENT
 
 > rdiffGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 > rdiffGetFileSystemStats str =
@@ -291,6 +293,12 @@ fairly useful exception types.
 >           remainder = joinPath $ tail $ splitDirectories path
 >           realpath = rdiffCtx </> remainder
 
+> rdiffCurrentRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
+> rdiffCurrentRead rdiffCtx path _ byteCount offset
+>     | path == rdiffPath = return $ Right $ B.take (fromIntegral byteCount) $
+>                                    B.drop (fromIntegral offset) rdiffString
+>     | otherwise         = return $ Left eNOENT
+
 Stub increment functions (for now)
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
@@ -322,3 +330,6 @@ Stub increment functions (for now)
 
 > rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffIncrementOpen rdiffCtx path mode flags = return $ Left eNOENT
+
+> rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
+> rdiffIncrementRead rdiffCtx path _ byteCount offset = return $ Left eNOSYS
