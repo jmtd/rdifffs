@@ -163,7 +163,11 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 >     dates <- getDates rdiffCtx
 >     if (Current prefix) `elem` dates
 >         then rdiffGetCurrentFileStat rdiffCtx fpath
->         else return $ Left eNOENT
+>         else if (Increment prefix) `elem` dates
+>             then if path == prefix
+>                 then return $ Right $ dirStat ctx
+>                 else rdiffIncrementGetFileStat rdiffCtx fpath
+>             else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
@@ -301,3 +305,9 @@ fairly useful exception types.
 >               return eOK
 >           handler :: IOError -> IO Errno
 >           handler e = return eACCES
+
+Stub increment functions (for now)
+
+> rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
+> rdiffIncrementGetFileStat _ _ = do
+>     return $ Left eNOENT
