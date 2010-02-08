@@ -87,11 +87,6 @@ The main method is so short I feel it's best to get it out of the way here.
 >                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
 >                             , fuseReadSymbolicLink = rdiffReadSymbolicLink rdiffCtx
 >                             }
-> rdiffString :: B.ByteString
-> rdiffString = B.pack "Hello World, HFuse!\n"
-> 
-> rdiffPath :: FilePath
-> rdiffPath = "/rdiff"
 
 > buildStat ctx entrytype fsize = FileStat { statEntryType = entrytype
 >                          , statFileMode = foldr1 unionFileModes
@@ -113,8 +108,8 @@ The main method is so short I feel it's best to get it out of the way here.
 >                          , statStatusChangeTime = 0
 >                          }
 > dirStat ctx = buildStat ctx Directory 4096
-> fileStat ctx = buildStat ctx RegularFile $ fromIntegral $ B.length rdiffString
-> linkStat ctx = buildStat ctx SymbolicLink$ fromIntegral $ B.length rdiffString
+> fileStat ctx = buildStat ctx RegularFile $ fromIntegral $ B.length $ B.pack "test string"
+> linkStat ctx = buildStat ctx SymbolicLink$ fromIntegral $ B.length $ B.pack "test string"
 
 Firstly, the top-level FUSE operations. These handle the top-level directory
 (list of backup dates, a symlink to the current (most recent) backup); detect
