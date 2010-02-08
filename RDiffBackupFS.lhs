@@ -92,59 +92,29 @@ The main method is so short I feel it's best to get it out of the way here.
 > 
 > rdiffPath :: FilePath
 > rdiffPath = "/rdiff"
-> dirStat ctx = FileStat { statEntryType = Directory
->                        , statFileMode = foldr1 unionFileModes
->                                           [ ownerReadMode
->                                           , ownerExecuteMode
->                                           , groupReadMode
->                                           , groupExecuteMode
->                                           , otherReadMode
->                                           , otherExecuteMode
->                                           ]
->                        , statLinkCount = 2
->                        , statFileOwner = fuseCtxUserID ctx
->                        , statFileGroup = fuseCtxGroupID ctx
->                        , statSpecialDeviceID = 0
->                        , statFileSize = 4096
->                        , statBlocks = 1
->                        , statAccessTime = 0
->                        , statModificationTime = 0
->                        , statStatusChangeTime = 0
->                        }
-> 
-> fileStat ctx = FileStat { statEntryType = RegularFile
->                         , statFileMode = foldr1 unionFileModes
->                                            [ ownerReadMode
->                                            , groupReadMode
->                                            , otherReadMode
->                                            ]
->                         , statLinkCount = 1
->                         , statFileOwner = fuseCtxUserID ctx
->                         , statFileGroup = fuseCtxGroupID ctx
->                         , statSpecialDeviceID = 0
->                         , statFileSize = fromIntegral $ B.length rdiffString
->                         , statBlocks = 1
->                         , statAccessTime = 0
->                         , statModificationTime = 0
->                         , statStatusChangeTime = 0
->                         }
-> 
-> linkStat ctx = FileStat { statEntryType = SymbolicLink
->                         , statFileMode = foldr1 unionFileModes
->                                            [ ownerReadMode
->                                            , groupReadMode
->                                            , otherReadMode
->                                            ]
->                         , statLinkCount = 1
->                         , statFileOwner = fuseCtxUserID ctx
->                         , statFileGroup = fuseCtxGroupID ctx
->                         , statSpecialDeviceID = 0
->                         , statFileSize = fromIntegral $ B.length rdiffString
->                         , statBlocks = 1
->                         , statAccessTime = 0
->                         , statModificationTime = 0
->                         , statStatusChangeTime = 0
->                         }
+
+> buildStat ctx entrytype fsize = FileStat { statEntryType = entrytype
+>                          , statFileMode = foldr1 unionFileModes
+>                                             [ ownerReadMode
+>                                             , ownerExecuteMode
+>                                             , groupReadMode
+>                                             , groupExecuteMode
+>                                             , otherReadMode
+>                                             , otherExecuteMode
+>                                             ]
+>                          , statLinkCount = 2
+>                          , statFileOwner = fuseCtxUserID ctx
+>                          , statFileGroup = fuseCtxGroupID ctx
+>                          , statSpecialDeviceID = 0
+>                          , statFileSize = fsize
+>                          , statBlocks = 1
+>                          , statAccessTime = 0
+>                          , statModificationTime = 0
+>                          , statStatusChangeTime = 0
+>                          }
+> dirStat ctx = buildStat ctx Directory 4096
+> fileStat ctx = buildStat ctx RegularFile $ fromIntegral $ B.length rdiffString
+> linkStat ctx = buildStat ctx SymbolicLink$ fromIntegral $ B.length rdiffString
 
 Firstly, the top-level FUSE operations. These handle the top-level directory
 (list of backup dates, a symlink to the current (most recent) backup); detect
