@@ -153,19 +153,12 @@ directory and the /current symlink within.
 
 > rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffOpenDirectory _ "/" = return eOK
-> rdiffOpenDirectory rdiffCtx fdir | dir == prefix = do
->     dates <- getDates rdiffCtx
->     if dir `elem` (map getRdiffBackupDate dates)
->         then return eOK
->         else return eNOENT
->                                  | otherwise = do
+> rdiffOpenDirectory rdiffCtx fdir = do
 >     which <- whichBackup rdiffCtx fdir
 >     case which of
 >         CurrentBackup   -> rdiffCurrentOpenDirectory rdiffCtx fdir
 >         IncrementBackup -> rdiffIncrementOpenDirectory rdiffCtx fdir
 >         Neither         -> return eNOENT
->     where (_:dir) = fdir
->           prefix = head $ splitDirectories dir
 
 > rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffReadDirectory rdiffCtx "/" = do
@@ -312,8 +305,11 @@ Stub increment functions (for now)
 >         prefix = head $ splitDirectories path
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffIncrementOpenDirectory rdiffCtx fdir = do
->     return eNOENT
+> rdiffIncrementOpenDirectory rdiffCtx fdir
+>     | dir == prefix = return eOK
+>     | otherwise     = return eNOSYS
+>     where (_:dir) = fdir
+>           prefix = head $ splitDirectories dir
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory rdiffCtx fdir = do
