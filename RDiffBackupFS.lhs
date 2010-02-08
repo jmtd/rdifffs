@@ -243,20 +243,29 @@ list returned by 'getDates' will have the Current backup at the head of
 the list. This is true for the current implementation, but it would be nice
 to enforce this.
 
+> data WhichBackupType = CurrentBackup | IncrementBackup | Neither deriving(Eq)
+> whichBackup :: RdiffContext -> String -> IO WhichBackupType
+> whichBackup rdiffCtx fpath = do
+>     dates <- getDates rdiffCtx
+>     if (Current prefix) `elem` dates
+>         then return CurrentBackup
+>         else if (Increment prefix) `elem` dates
+>              then return IncrementBackup
+>              else return Neither
+>     where
+>         (_:path) = fpath
+>         prefix = head $ splitDirectories path
+
 > rdiffReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffReadSymbolicLink rdiffCtx "/current" = do
 >     dates <- getDates rdiffCtx
 >     return $ Right $ getRdiffBackupDate $ head dates
 > rdiffReadSymbolicLink rdiffCtx fpath = do
->     dates <- getDates rdiffCtx
->     if (Current prefix) `elem` dates 
->         then rdiffCurrentReadSymbolicLink rdiffCtx fpath
->         else if (Increment prefix) `elem` dates
->              then rdiffIncrementReadSymbolicLink rdiffCtx fpath
->              else return $ Left eNOSYS
->     where
->         (_:path) = fpath
->         prefix = head $ splitDirectories path
+>     which <- whichBackup rdiffCtx fpath
+>     case which of
+>         CurrentBackup    -> rdiffCurrentReadSymbolicLink rdiffCtx fpath
+>         IncrementBackup  -> rdiffIncrementReadSymbolicLink rdiffCtx fpath
+>         Neither          -> return $ Left eNOSYS
 
 > ----------------------------------------------------------------------------
 
