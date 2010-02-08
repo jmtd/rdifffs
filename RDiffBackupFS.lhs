@@ -221,14 +221,16 @@ Some helper functions for the Current and Increment sets.
 > fileNameToTuple f = do
 >     ctx <- getFuseContext
 >     stat <- getSymbolicLinkStatus f
->     if (isSymbolicLink stat)
->         then do
->             return (f, linkStat ctx)
->         else if (isDirectory stat)
->             then return (f, dirStat ctx)
->             else if (isRegularFile stat)
->                 then return (f, buildStat ctx RegularFile $ fromIntegral $ (fileSize stat))
->                 else return (f, fileStat ctx) -- XXX: default
+>     case (flibble stat) of
+>         symbolicLinkMode -> return (f, linkStat ctx)
+>         directoryMode    -> return (f, dirStat ctx)
+>         regularFileMode  -> return (f, buildStat ctx RegularFile $ fromIntegral $ (fileSize stat))
+>         _                -> return (f, fileStat ctx) -- XXX: default
+>     where
+>        flibble stat = fileMode stat `intersectFileModes` fileTypeModes
+
+Other possibilities are socketMode, characterSpecialMode, blockSpecialMode, namedPipeMode.
+
 
 Now for the Current-functions. These handle IO requests for stuff under the
 current backup tree.
