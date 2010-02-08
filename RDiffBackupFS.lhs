@@ -208,7 +208,7 @@ directory; the /current symlink and directories within the root.
 >     if (Current prefix) `elem` dates
 >         then rdiffCurrentReadDirectory rdiffCtx fdir
 >         else if (Increment prefix) `elem` dates
->              then return $ Right $ dirs ctx ["OMG"]
+>              then rdiffIncrementReadDirectory rdiffCtx fdir
 >              else return (Left (eNOENT)) 
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
@@ -327,3 +327,9 @@ Stub increment functions (for now)
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory rdiffCtx fdir = do
 >     return eNOENT
+
+> rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+> rdiffIncrementReadDirectory rdiffCtx fdir = do
+>     ctx <- getFuseContext
+>     return $ Right $ dirs ctx ["OMG"]
+>     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
