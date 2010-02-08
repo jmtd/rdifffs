@@ -291,8 +291,7 @@ fairly useful exception types.
 
 > rdiffCurrentOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffCurrentOpenDirectory rdiffCtx fpath = do
->     ret <- catch (toTry $ rdiffCtx </> remainder) handler
->     return ret
+>     catch (toTry $ rdiffCtx </> remainder) handler
 >     where (_:path) = fpath
 >           remainder = joinPath $ tail $ splitDirectories path
 >           toTry :: FilePath -> IO Errno
@@ -301,5 +300,4 @@ fairly useful exception types.
 >               closeDirStream ds
 >               return eOK
 >           handler :: IOError -> IO Errno
->           handler e = do
->               return eACCES
+>           handler e = return eACCES
