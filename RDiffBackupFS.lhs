@@ -80,7 +80,7 @@ The main method is so short I feel it's best to get it out of the way here.
 > 
 > rdiffFSOps :: RdiffContext -> FuseOperations HT
 > rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = (rdiffGetFileStat rdiffCtx)
->                             , fuseOpen        = rdiffOpen
+>                             , fuseOpen        = rdiffOpen rdiffCtx
 >                             , fuseRead        = rdiffRead 
 >                             , fuseOpenDirectory = (rdiffOpenDirectory rdiffCtx)
 >                             , fuseReadDirectory = (rdiffReadDirectory rdiffCtx)
@@ -189,12 +189,13 @@ directory; the /current symlink and directories within the root.
 >         IncrementBackup -> rdiffIncrementReadDirectory rdiffCtx fdir
 >         Neither         -> return $ Left eNOENT
 
-> rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffOpen path mode flags
->     | path == rdiffPath = case mode of
->                             ReadOnly -> return (Right ())
->                             _        -> return (Left eACCES)
->     | otherwise         = return (Left eNOENT)
+> rdiffOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
+> rdiffOpen rdiffCtx path mode flags = do
+>     which <- whichBackup rdiffCtx path
+>     case which of
+>         CurrentBackup   -> rdiffCurrentOpen rdiffCtx path mode flags
+>         IncrementBackup -> rdiffIncrementOpen rdiffCtx path mode flags
+>         Neither         -> return $ Left eNOENT
 
 > rdiffRead :: FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 > rdiffRead path _ byteCount offset
@@ -293,6 +294,19 @@ fairly useful exception types.
 >           handler :: IOError -> IO Errno
 >           handler e = return eACCES
 
+> rdiffCurrentOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
+> rdiffCurrentOpen rdiffCtx fpath mode flags =
+>     case mode of
+>         ReadOnly -> do             -- Read Write Execute
+>             ok <- fileAccess realpath True False False
+>             if ok
+>                 then return $ Right ()
+>                 else return $ Left eACCES
+>         _        ->  return $ Left eACCES
+>     where (_:path) = fpath
+>           remainder = joinPath $ tail $ splitDirectories path
+>           realpath = rdiffCtx </> remainder
+
 Stub increment functions (for now)
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
@@ -311,3 +325,6 @@ Stub increment functions (for now)
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink rdiffCtx fpath = return $ Left eNOSYS
+
+> rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
+> rdiffIncrementOpen rdiffCtx path mode flags = return $ Left eNOENT
