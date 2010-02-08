@@ -226,7 +226,9 @@ Some helper functions for the Current and Increment sets.
 >             return (f, linkStat ctx)
 >         else if (isDirectory stat)
 >             then return (f, dirStat ctx)
->             else return (f, fileStat ctx) -- XXX: default
+>             else if (isRegularFile stat)
+>                 then return (f, buildStat ctx RegularFile $ fromIntegral $ (fileSize stat))
+>                 else return (f, fileStat ctx) -- XXX: default
 
 Now for the Current-functions. These handle IO requests for stuff under the
 current backup tree.
