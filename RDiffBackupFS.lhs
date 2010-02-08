@@ -150,9 +150,6 @@ directory and the /current symlink within.
 >         CurrentBackup   -> rdiffGetCurrentFileStat rdiffCtx fpath
 >         IncrementBackup -> rdiffIncrementGetFileStat rdiffCtx fpath
 >         Neither         -> return $ Left eNOENT
->     where
->         (_:path) = fpath
->         prefix = head $ splitDirectories path
 
 > rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffOpenDirectory _ "/" = return eOK
@@ -304,8 +301,15 @@ fairly useful exception types.
 Stub increment functions (for now)
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffIncrementGetFileStat _ _ = do
->     return $ Left eNOENT
+> rdiffIncrementGetFileStat rdiffCtx fpath = do
+>     dates <- getDates rdiffCtx
+>     ctx <- getFuseContext
+>     if prefix `elem` (map getRdiffBackupDate $ tail dates)
+>         then return $ Right $ dirStat ctx
+>         else return $ Left eNOENT
+>     where
+>         (_:path) = fpath
+>         prefix = head $ splitDirectories path
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory rdiffCtx fdir = do
