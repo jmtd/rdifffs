@@ -212,19 +212,7 @@ directory; the /current symlink and directories within the root.
 >              else return (Left (eNOENT)) 
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
->           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 
-> fileNameToTuple :: FilePath -> IO (String, FileStat)
-> fileNameToTuple f = do
->     ctx <- getFuseContext
->     stat <- getSymbolicLinkStatus f
->     if (isSymbolicLink stat)
->         then do
->             return (f, linkStat ctx)
->         else if (isDirectory stat)
->             then return (f, dirStat ctx)
->             else return (f, fileStat ctx) -- XXX: default
-> 
 > rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffOpen path mode flags
 >     | path == rdiffPath = case mode of
@@ -261,14 +249,29 @@ to enforce this.
 >     return $ Right $ getRdiffBackupDate $ head dates
 > rdiffReadSymbolicLink rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
->     if prefix `elem` (map getRdiffBackupDate dates)
+>     if (Current prefix) `elem` dates 
 >         then rdiffCurrentReadSymbolicLink rdiffCtx fpath
->         else return $ Left eNOSYS
+>         else if (Increment prefix) `elem` dates
+>              then rdiffIncrementReadSymbolicLink rdiffCtx fpath
+>              else return $ Left eNOSYS
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
 
 > ----------------------------------------------------------------------------
+
+Some helper functions for the Current and Increment sets.
+
+> fileNameToTuple :: FilePath -> IO (String, FileStat)
+> fileNameToTuple f = do
+>     ctx <- getFuseContext
+>     stat <- getSymbolicLinkStatus f
+>     if (isSymbolicLink stat)
+>         then do
+>             return (f, linkStat ctx)
+>         else if (isDirectory stat)
+>             then return (f, dirStat ctx)
+>             else return (f, fileStat ctx) -- XXX: default
 
 Now for the Current-functions. These handle IO requests for stuff under the
 current backup tree.
@@ -333,3 +336,6 @@ Stub increment functions (for now)
 >     ctx <- getFuseContext
 >     return $ Right $ dirs ctx ["OMG"]
 >     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
+
+> rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
+> rdiffIncrementReadSymbolicLink rdiffCtx fpath = return $ Left eNOSYS
