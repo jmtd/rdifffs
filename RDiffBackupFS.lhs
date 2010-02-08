@@ -36,7 +36,6 @@ The main method is so short I feel it's best to get it out of the way here.
 > 
 > -- we need at least two CMDs: one for us (underlay), one for fuse (mntpoint)
 > verifyArgs :: [String] -> IO ()
-> verifyArgs [_] = return ()
 > verifyArgs xs | length xs > 1 = return ()
 > verifyArgs xs | otherwise = error $
 >     "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
@@ -267,12 +266,10 @@ current backup tree.
 
 > rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffGetCurrentFileStat rdiffCtx fpath = do
->     ctx <- getFuseContext
 >     fstat <- fileNameToFileStat realPath
 >     return $ Right $ fstat
 >     where
 >         (_:path) = fpath
->         prefix = head $ splitDirectories path
 >         realPath = joinPath $ rdiffCtx:(tail $ splitDirectories path)
 
 > rdiffCurrentReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
