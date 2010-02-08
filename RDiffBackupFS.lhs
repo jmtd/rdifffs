@@ -79,13 +79,13 @@ The main method is so short I feel it's best to get it out of the way here.
 > type HT = ()
 > 
 > rdiffFSOps :: RdiffContext -> FuseOperations HT
-> rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = (rdiffGetFileStat rdiffCtx)
+> rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat rdiffCtx
 >                             , fuseOpen        = rdiffOpen rdiffCtx
 >                             , fuseRead        = rdiffRead 
->                             , fuseOpenDirectory = (rdiffOpenDirectory rdiffCtx)
->                             , fuseReadDirectory = (rdiffReadDirectory rdiffCtx)
+>                             , fuseOpenDirectory = rdiffOpenDirectory rdiffCtx
+>                             , fuseReadDirectory = rdiffReadDirectory rdiffCtx
 >                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
->                             , fuseReadSymbolicLink = (rdiffReadSymbolicLink rdiffCtx)
+>                             , fuseReadSymbolicLink = rdiffReadSymbolicLink rdiffCtx
 >                             }
 > rdiffString :: B.ByteString
 > rdiffString = B.pack "Hello World, HFuse!\n"
