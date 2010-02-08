@@ -269,7 +269,6 @@ current backup tree.
 > rdiffGetCurrentFileStat rdiffCtx fpath = do
 >     ctx <- getFuseContext
 >     fstat <- fileNameToFileStat realPath
->     --tuple <- fileNameToTuple realPath
 >     return $ Right $ fstat
 >     where
 >         (_:path) = fpath
