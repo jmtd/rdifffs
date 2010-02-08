@@ -135,7 +135,7 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 >         prefix = head $ splitDirectories path
 
 rdiffGetFileStat implements getattr(2). We handle requests for the root
-directory; the /current symlink and directories within the root.
+directory and the /current symlink within.
 
 > rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffGetFileStat _ "/" = do
@@ -144,13 +144,7 @@ directory; the /current symlink and directories within the root.
 > rdiffGetFileStat _ "/current" = do
 >     ctx <- getFuseContext
 >     return $ Right $ linkStat ctx
-> rdiffGetFileStat rdiffCtx fpath | path == prefix = do
->     dates <- getDates rdiffCtx
->     ctx <- getFuseContext
->     if prefix `elem` (map getRdiffBackupDate dates)
->         then return $ Right $ dirStat ctx
->         else return $ Left eNOENT
->                                 | otherwise = do
+> rdiffGetFileStat rdiffCtx fpath = do
 >     which <- whichBackup rdiffCtx fpath
 >     case which of
 >         CurrentBackup   -> rdiffGetCurrentFileStat rdiffCtx fpath
