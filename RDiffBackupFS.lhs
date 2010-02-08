@@ -151,6 +151,11 @@ Firstly, the top-level FUSE operations. These handle the top-level directory
 whether the request is for a sub-directory, and dispatch to the appropriate
 function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 
+rdiffGetFileStat implements getattr(2). We handle requests for the root
+directory; the /current symlink; increment directories within the root
+directory. We pass on requests for sub-directories inside the increments or
+the current. We also pass on requests for the current directory (FIXME)
+
 > rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffGetFileStat _ "/" = do
 >     ctx <- getFuseContext
