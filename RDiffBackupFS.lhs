@@ -11,7 +11,17 @@
 > import System.FilePath -- pathSeparator, </>
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
-> 
+
+The main method is so short I feel it's best to get it out of the way here.
+
+> main :: IO ()
+> main = do
+>     args <- getArgs
+>     verifyArgs args
+>     path <- canonicalizePath $ head args
+>     ensureRdiffBackupDir path
+>     withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
+
 > usage :: String
 > usage = "archfs3 <rdiff-backup directory> <mountpoint>"
 > 
@@ -134,7 +144,12 @@
 >                         , statModificationTime = 0
 >                         , statStatusChangeTime = 0
 >                         }
-> 
+
+Firstly, the top-level FUSE operations. These handle the top-level directory
+(list of backup dates, a symlink to the current (most recent) backup); detect
+whether the request is for a sub-directory, and dispatch to the appropriate
+function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
+
 > rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffGetFileStat _ "/" = do
 >     ctx <- getFuseContext
@@ -145,23 +160,13 @@
 > rdiffGetFileStat rdiffCtx fpath = do
 >     ctx <- getFuseContext
 >     dates <- getDates rdiffCtx
->     if prefix `elem` (map getRdiffBackupDate dates)
+>     if (Current prefix) `elem` dates
 >         then rdiffGetCurrentFileStat rdiffCtx fpath
 >         else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
-> 
-> rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffGetCurrentFileStat rdiffCtx fpath = do
->     ctx <- getFuseContext
->     tuple <- fileNameToTuple realPath
->     return $ Right $ snd tuple
->     where
->         (_:path) = fpath
->         prefix = head $ splitDirectories path
->         realPath = joinPath $ rdiffCtx:(tail $ splitDirectories path)
-> 
+
 > rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffOpenDirectory _ "/" = return eOK
 > rdiffOpenDirectory rdiffCtx fdir = do
@@ -171,7 +176,7 @@
 >         else return eNOENT
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
-> 
+
 > rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffReadDirectory rdiffCtx "/" = do
 >     ctx <- getFuseContext
@@ -182,21 +187,14 @@
 >     ctx <- getFuseContext
 >     dates <- getDates rdiffCtx
 >     if (Current prefix) `elem` dates
->         then rdiffReadCurrentDirectory rdiffCtx fdir
+>         then rdiffCurrentReadDirectory rdiffCtx fdir
 >         else if (Increment prefix) `elem` dates
 >              then return $ Right $ dirs ctx ["OMG"]
 >              else return (Left (eNOENT)) 
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
 >           dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
-> 
-> rdiffReadCurrentDirectory rdiffCtx fdir = do
->     l <- getDirectoryContents $ rdiffCtx </> remainder
->     ret <- mapM (fileNameToTuple . (rdiffCtx </>)) $ filter (/= "rdiff-backup-data") l
->     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
->     where (_:dir) = fdir
->           remainder = joinPath $ tail $ splitDirectories dir
-> 
+
 > fileNameToTuple :: FilePath -> IO (String, FileStat)
 > fileNameToTuple f = do
 >     ctx <- getFuseContext
@@ -214,14 +212,13 @@
 >                             ReadOnly -> return (Right ())
 >                             _        -> return (Left eACCES)
 >     | otherwise         = return (Left eNOENT)
-> 
-> 
+
 > rdiffRead :: FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 > rdiffRead path _ byteCount offset
 >     | path == rdiffPath =
 >         return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) rdiffString
 >     | otherwise         = return $ Left eNOENT
-> 
+
 > rdiffGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 > rdiffGetFileSystemStats str =
 >   return $ Right $ FileSystemStats
@@ -233,11 +230,16 @@
 >     , fsStatFilesFree = 10
 >     , fsStatMaxNameLength = 255
 >     }
-> 
+
+The current implementation of rdiffReadSymbolicLink here assumes that the
+list returned by 'getDates' will have the Current backup at the head of
+the list. This is true for the current implementation, but it would be nice
+to enforce this.
+
 > rdiffReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffReadSymbolicLink rdiffCtx "/current" = do
 >     dates <- getDates rdiffCtx
->     return $ Right $ getRdiffBackupDate $ head dates -- XXX: relies on getDates prefixing Current
+>     return $ Right $ getRdiffBackupDate $ head dates
 > rdiffReadSymbolicLink rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
 >     if prefix `elem` (map getRdiffBackupDate dates)
@@ -246,7 +248,22 @@
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
-> 
+
+> ----------------------------------------------------------------------------
+
+Now for the Current-functions. These handle IO requests for stuff under the
+current backup tree.
+
+> rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
+> rdiffGetCurrentFileStat rdiffCtx fpath = do
+>     ctx <- getFuseContext
+>     tuple <- fileNameToTuple realPath
+>     return $ Right $ snd tuple
+>     where
+>         (_:path) = fpath
+>         prefix = head $ splitDirectories path
+>         realPath = joinPath $ rdiffCtx:(tail $ splitDirectories path)
+
 > rdiffCurrentReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffCurrentReadSymbolicLink rdiffCtx fpath = do
 >     target <- readSymbolicLink $ rdiffCtx </> remainder
@@ -254,11 +271,11 @@
 >     where
 >         (_:path) = fpath
 >         remainder = joinPath $ tail $ splitDirectories path
-> 
-> main :: IO ()
-> main = do
->     args <- getArgs
->     verifyArgs args
->     path <- canonicalizePath $ head args
->     ensureRdiffBackupDir path
->     withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
+
+> rdiffCurrentReadDirectory rdiffCtx fdir = do
+>     l <- getDirectoryContents $ rdiffCtx </> remainder
+>     ret <- mapM (fileNameToTuple . (rdiffCtx </>)) $ filter (/= "rdiff-backup-data") l
+>     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
+>     where (_:dir) = fdir
+>           remainder = joinPath $ tail $ splitDirectories dir
+
