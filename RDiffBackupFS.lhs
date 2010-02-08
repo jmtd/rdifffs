@@ -152,9 +152,7 @@ whether the request is for a sub-directory, and dispatch to the appropriate
 function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 
 rdiffGetFileStat implements getattr(2). We handle requests for the root
-directory; the /current symlink; increment directories within the root
-directory. We pass on requests for sub-directories inside the increments or
-the current. We also pass on requests for the current directory (FIXME)
+directory; the /current symlink and directories within the root.
 
 > rdiffGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffGetFileStat _ "/" = do
@@ -163,15 +161,19 @@ the current. We also pass on requests for the current directory (FIXME)
 > rdiffGetFileStat _ "/current" = do
 >     ctx <- getFuseContext
 >     return $ Right $ linkStat ctx
-> rdiffGetFileStat rdiffCtx fpath = do
+> rdiffGetFileStat rdiffCtx fpath | path == prefix = do
+>     dates <- getDates rdiffCtx
+>     ctx <- getFuseContext
+>     if prefix `elem` (map getRdiffBackupDate dates)
+>         then return $ Right $ dirStat ctx
+>         else return $ Left eNOENT
+>                                 | otherwise = do
 >     ctx <- getFuseContext
 >     dates <- getDates rdiffCtx
 >     if (Current prefix) `elem` dates
 >         then rdiffGetCurrentFileStat rdiffCtx fpath
 >         else if (Increment prefix) `elem` dates
->             then if path == prefix
->                 then return $ Right $ dirStat ctx
->                 else rdiffIncrementGetFileStat rdiffCtx fpath
+>             then rdiffIncrementGetFileStat rdiffCtx fpath
 >             else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
