@@ -276,11 +276,12 @@ current backup tree.
 >         remainder = joinPath $ tail $ splitDirectories path
 
 > rdiffCurrentReadDirectory rdiffCtx fdir = do
->     l <- getDirectoryContents $ rdiffCtx </> remainder
->     ret <- mapM (fileNameToTuple . (rdiffCtx </>)) $ filter (/= "rdiff-backup-data") l
+>     l <- getDirectoryContents realdir
+>     ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
 >     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
 >     where (_:dir) = fdir
 >           remainder = joinPath $ tail $ splitDirectories dir
+>           realdir = rdiffCtx </> remainder
 
 This is a really ugly function. We need to call readdir(2) on the underlying
 directory and try to pass any error on up to our readdir(2) response. Hence
