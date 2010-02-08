@@ -172,10 +172,10 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 > rdiffOpenDirectory _ "/" = return eOK
 > rdiffOpenDirectory rdiffCtx fdir = do
 >     dates <- getDates rdiffCtx
->     if prefix `elem` (map getRdiffBackupDate dates)
->         then return eOK
->         else if (Current prefix) `elem` dates
->           then rdiffCurrentOpenDirectory rdiffCtx fdir
+>     if (Current prefix) `elem` dates
+>         then rdiffCurrentOpenDirectory rdiffCtx fdir
+>         else if (Increment prefix) `elem` dates
+>           then return eOK
 >           else return eNOENT
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
