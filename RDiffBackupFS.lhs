@@ -151,6 +151,19 @@ Firstly, the top-level FUSE operations. These handle the top-level directory
 whether the request is for a sub-directory, and dispatch to the appropriate
 function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 
+> data WhichBackupType = CurrentBackup | IncrementBackup | Neither deriving(Eq)
+> whichBackup :: RdiffContext -> String -> IO WhichBackupType
+> whichBackup rdiffCtx fpath = do
+>     dates <- getDates rdiffCtx
+>     if (Current prefix) `elem` dates
+>         then return CurrentBackup
+>         else if (Increment prefix) `elem` dates
+>              then return IncrementBackup
+>              else return Neither
+>     where
+>         (_:path) = fpath
+>         prefix = head $ splitDirectories path
+
 rdiffGetFileStat implements getattr(2). We handle requests for the root
 directory; the /current symlink and directories within the root.
 
@@ -168,13 +181,11 @@ directory; the /current symlink and directories within the root.
 >         then return $ Right $ dirStat ctx
 >         else return $ Left eNOENT
 >                                 | otherwise = do
->     ctx <- getFuseContext
->     dates <- getDates rdiffCtx
->     if (Current prefix) `elem` dates
->         then rdiffGetCurrentFileStat rdiffCtx fpath
->         else if (Increment prefix) `elem` dates
->             then rdiffIncrementGetFileStat rdiffCtx fpath
->             else return $ Left eNOENT
+>     which <- whichBackup rdiffCtx fpath
+>     case which of
+>         CurrentBackup   -> rdiffGetCurrentFileStat rdiffCtx fpath
+>         IncrementBackup -> rdiffIncrementGetFileStat rdiffCtx fpath
+>         Neither         -> return $ Left eNOENT
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
@@ -187,12 +198,11 @@ directory; the /current symlink and directories within the root.
 >         then return eOK
 >         else return eNOENT
 >                                  | otherwise = do
->     dates <- getDates rdiffCtx
->     if (Current prefix) `elem` dates
->         then rdiffCurrentOpenDirectory rdiffCtx fdir
->         else if (Increment prefix) `elem` dates
->           then rdiffIncrementOpenDirectory rdiffCtx fdir
->           else return eNOENT
+>     which <- whichBackup rdiffCtx fdir
+>     case which of
+>         CurrentBackup   -> rdiffCurrentOpenDirectory rdiffCtx fdir
+>         IncrementBackup -> rdiffIncrementOpenDirectory rdiffCtx fdir
+>         Neither         -> return eNOENT
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
 
@@ -203,15 +213,11 @@ directory; the /current symlink and directories within the root.
 >     return $ Right $ (dirs ctx (map getRdiffBackupDate dates)) ++ ([("current", linkStat ctx)])
 >     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 > rdiffReadDirectory rdiffCtx fdir = do
->     ctx <- getFuseContext
->     dates <- getDates rdiffCtx
->     if (Current prefix) `elem` dates
->         then rdiffCurrentReadDirectory rdiffCtx fdir
->         else if (Increment prefix) `elem` dates
->              then rdiffIncrementReadDirectory rdiffCtx fdir
->              else return (Left (eNOENT)) 
->     where (_:dir) = fdir
->           prefix = head $ splitDirectories dir
+>     which <- whichBackup rdiffCtx fdir
+>     case which of
+>         CurrentBackup   -> rdiffCurrentReadDirectory rdiffCtx fdir
+>         IncrementBackup -> rdiffIncrementReadDirectory rdiffCtx fdir
+>         Neither         -> return $ Left eNOENT
 
 > rdiffOpen :: FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffOpen path mode flags
@@ -242,19 +248,6 @@ The current implementation of rdiffReadSymbolicLink here assumes that the
 list returned by 'getDates' will have the Current backup at the head of
 the list. This is true for the current implementation, but it would be nice
 to enforce this.
-
-> data WhichBackupType = CurrentBackup | IncrementBackup | Neither deriving(Eq)
-> whichBackup :: RdiffContext -> String -> IO WhichBackupType
-> whichBackup rdiffCtx fpath = do
->     dates <- getDates rdiffCtx
->     if (Current prefix) `elem` dates
->         then return CurrentBackup
->         else if (Increment prefix) `elem` dates
->              then return IncrementBackup
->              else return Neither
->     where
->         (_:path) = fpath
->         prefix = head $ splitDirectories path
 
 > rdiffReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffReadSymbolicLink rdiffCtx "/current" = do
