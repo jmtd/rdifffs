@@ -217,6 +217,39 @@ to enforce this.
 
 Some helper functions for the Current and Increment sets.
 
+> posixToFuseFileType :: [(FileMode, EntryType)]
+> posixToFuseFileType = [ (regularFileMode, RegularFile)
+>                       , (symbolicLinkMode, SymbolicLink)
+>                       , (directoryMode, Directory)
+>                       , (namedPipeMode, NamedPipe)
+>                       , (characterSpecialMode, CharacterSpecial)
+>                       , (blockSpecialMode, BlockSpecial)
+>                       , (socketMode, Socket)
+>                       ]
+
+> fileNameToFileStat :: FilePath -> IO FileStat
+> fileNameToFileStat path = do
+>     ctx <- getFuseContext
+>     stat <- getSymbolicLinkStatus path
+>     let mode = fileMode stat
+>     return FileStat { statEntryType = unpick $ lookup (ft mode) posixToFuseFileType 
+>                     , statFileMode = mode
+>                     , statLinkCount = linkCount stat
+>                     , statFileOwner = fuseCtxUserID ctx
+>                     , statFileGroup = fuseCtxGroupID ctx
+>                     , statSpecialDeviceID = specialDeviceID stat
+>                     , statFileSize = fileSize stat
+>                     , statBlocks = 1
+>                     , statAccessTime = accessTime stat
+>                     , statModificationTime = modificationTime stat
+>                     , statStatusChangeTime =  statusChangeTime stat
+>                     }
+>    where
+>        unpick :: Maybe EntryType -> EntryType
+>        unpick (Just x) = x
+>        unpick _ = RegularFile
+>        ft mode = mode `intersectFileModes` fileTypeModes
+
 > fileNameToTuple :: FilePath -> IO (String, FileStat)
 > fileNameToTuple f = do
 >     ctx <- getFuseContext
@@ -235,8 +268,9 @@ current backup tree.
 > rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffGetCurrentFileStat rdiffCtx fpath = do
 >     ctx <- getFuseContext
->     tuple <- fileNameToTuple realPath
->     return $ Right $ snd tuple
+>     fstat <- fileNameToFileStat realPath
+>     --tuple <- fileNameToTuple realPath
+>     return $ Right $ fstat
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
