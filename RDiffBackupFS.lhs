@@ -12,6 +12,7 @@
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
+> import Data.List -- isInfixOf
 
 The main method is so short I feel it's best to get it out of the way here.
 
@@ -316,11 +317,22 @@ Stub increment functions (for now)
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
 
+Read the contents of a directory underneath an increment. We need to look
+at files under <root>/rdiff-backup-data/increments/<path> matching
+*<increment>.<suffix>. The precise suffix influences the directory listing,
+e.g. ".missing" means the filename listed *before* <increment> is not present.
+
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory rdiffCtx fdir = do
 >     ctx <- getFuseContext
->     return $ Right $ dirs ctx ["OMG"]
->     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
+>     l <- getDirectoryContents realdir
+>     ret <- mapM (fileNameToTuple . (realdir </>)) $ missingFiles l
+>     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
+>     where (_:dir) = fdir
+>           prefix = head $ splitDirectories dir
+>           remainder = joinPath $ tail $ splitDirectories dir
+>           realdir = rdiffCtx </> "rdiff-backup-data" </> "increments" </> remainder
+>           missingFiles l = filter (isInfixOf prefix) l
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink rdiffCtx fpath = return $ Left eNOSYS
