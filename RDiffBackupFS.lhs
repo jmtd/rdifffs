@@ -181,12 +181,17 @@ directory; the /current symlink and directories within the root.
 
 > rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffOpenDirectory _ "/" = return eOK
-> rdiffOpenDirectory rdiffCtx fdir = do
+> rdiffOpenDirectory rdiffCtx fdir | dir == prefix = do
+>     dates <- getDates rdiffCtx
+>     if dir `elem` (map getRdiffBackupDate dates)
+>         then return eOK
+>         else return eNOENT
+>                                  | otherwise = do
 >     dates <- getDates rdiffCtx
 >     if (Current prefix) `elem` dates
 >         then rdiffCurrentOpenDirectory rdiffCtx fdir
 >         else if (Increment prefix) `elem` dates
->           then return eOK
+>           then rdiffIncrementOpenDirectory rdiffCtx fdir
 >           else return eNOENT
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
@@ -318,3 +323,7 @@ Stub increment functions (for now)
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat _ _ = do
 >     return $ Left eNOENT
+
+> rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
+> rdiffIncrementOpenDirectory rdiffCtx fdir = do
+>     return eNOENT
