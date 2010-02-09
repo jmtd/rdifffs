@@ -353,6 +353,20 @@ at files under <root>/rdiff-backup-data/increments/<path> matching
 *<increment>.<suffix>. The precise suffix influences the directory listing,
 e.g. ".missing" means the filename listed *before* <increment> is not present.
 
+An increment's file tree will look as follows (as far as I understand it)
+
+    * start with the list in <dest>/<path>, as per Current
+    * look for files matching
+      <dest>/rdiff-backup-data/increments/<path>.<datetime_regex>.<suffix>
+      where suffix is from the list incrementSuffixes, below
+    * if datetime_regex matches our increment date, we're interested
+    * looking at the suffix:
+      * .missing, then prune the file
+      * .snapshot.gz and .diff.gz affect contents of file
+      * .dir means the filename was a dir at this point
+
+> incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
+
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory rdiffCtx fdir = do
 >     ctx <- getFuseContext
