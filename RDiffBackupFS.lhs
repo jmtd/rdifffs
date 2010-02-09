@@ -359,7 +359,8 @@ An increment's file tree will look as follows (as far as I understand it)
     * look for files matching
       <dest>/rdiff-backup-data/increments/<path>.<datetime_regex>.<suffix>
       where suffix is from the list incrementSuffixes, below
-    * if datetime_regex matches our increment date, we're interested
+    * we are interested in the matching part of datetime_regex for all dates
+      from most recent backwards to our increment time, in that order.
     * looking at the suffix:
       * .missing, then prune the file
       * .snapshot.gz and .diff.gz affect contents of file
