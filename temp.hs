@@ -5,34 +5,52 @@ import System.Directory
 import Text.Regex.Posix
 import Data.String.Utils
 type RdiffContext = String
+
+
+-- we want to
+-- list the increments directory, ignoring . and .. (done)
+-- assume every file inside matches the regex (done)
+-- identify those for which the matched region is lexographically equal to or (done)
+-- greater than our increment time. (done)
+
 readdir :: RdiffContext -> FilePath -> IO ()
 -- FilePath will be /<increment timestamp>/<sub-path>
 readdir repo fpath = do
-  l <- getDirectoryContents realdir
-  l2 <- getDirectoryContents incdir
-  mapM_ putStrLn $ filter (/= "rdiff-backup-data") l
-  mapM_ putStrLn $ l2
+  l <- getIncrementRecords repo
+  mapM_ print $ filter ((increment <=) . irDate) l
   where
     (_:path) = fpath
-    prefix = head $ splitDirectories path
+    increment = head $ splitDirectories path
     remainder = joinPath $ tail $ splitDirectories path
     realdir = repo </> remainder
     incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
 
-interestingIncrements :: String -> [FilePath] -> [FilePath]
-interestingIncrements _ [] = []
-interestingIncrements incr list =
-  map getmatch $ condense $ map applyre list
-  where
-    applyre :: FilePath -> Maybe (String,String,String,[String])
-    applyre fp = fp =~~ datetime_regex
-    getmatch :: (String,String,String,[String]) -> String
-    getmatch (_,_,_,[x]) = x
-    condense :: [Maybe a] -> [a]            
-    condense [] = []
-    condense ((Just x):xs) = x : condense xs
-    condense (Nothing:xs) = condense xs
+data IncrementRecord = IncrementRecord {
+                           irPath :: FilePath,
+                           irDate :: String,
+                           irSuff :: String
+                       } deriving (Show)
+
+-- assume we're reading the root and not a subdir
+-- return files which match increment regex
+getIncrementRecords :: RdiffContext -> IO [IncrementRecord]
+getIncrementRecords repo = do
+    l <- getDirectoryContents incdir
+    let m = map mapfn l
+    return $ fnargh m
+    where
+        incdir = repo </> "rdiff-backup-data" </> "increments"
+        mapfn :: FilePath -> Maybe IncrementRecord
+        mapfn fp = case fp =~~ datetime_regex :: Maybe (String, String, String, [String]) of
+            (Just (f,_,s,(d:ds))) -> Just IncrementRecord { irPath = f, irDate = d, irSuff = s }
+            _ -> Nothing
+        -- this is bound to be re-implementing something in the Prelude
+        fnargh :: [Maybe a] -> [a]
+        fnargh [] = []
+        fnargh ((Just x):xs) = x:(fnargh xs)
+        fnargh (Nothing:xs) = fnargh xs
 
 real = "/home/jon/wd/mine/archfs3/real/dest"
 incr = "2010-02-05T11:32:17Z"
+incrkiriath = "2010-02-02T22:28:21Z"
 datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
