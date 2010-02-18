@@ -52,7 +52,6 @@ readdir curr incr incdate = curr ++ incrshow
         incrtypes' = map (\x-> case x of Just y -> y) incrtypes -- unpack from the Just wrapper
         relevant = filter ((incdate <=) . irDate) incrtypes'   -- remove irrelevant IncrementRecords
         incrshow = map show relevant                          -- display something
-    --filter ((increment <=) . irDate) $ getIncrementRecords files
 
 data IncrementRecord = IncrementRecord {
                            irPath :: FilePath,
