@@ -37,31 +37,30 @@ type RdiffContext = String
  -}
 
 incr = "2010-02-18T12:06:21Z"
-files = ["a.2010-02-18T12:06:21Z.snapshot.gz", "b.2010-02-18T12:06:21Z.missing"]
+cur_files = [".", "..", "b", "rdiff-backup-data" ]
+inc_files = [".", "..", "a.2010-02-18T12:06:21Z.snapshot.gz", "b.2010-02-18T12:06:21Z.missing"]
 
--- we want to
--- list the increments directory, ignoring . and .. (done)
--- assume every file inside matches the regex (done)
--- identify those for which the matched region is lexographically equal to or (done)
--- greater than our increment time. (done)
-
-readdir :: RdiffContext -> FilePath -> IO ()
--- FilePath will be /<increment timestamp>/<sub-path>
-readdir repo fpath = do
-  l <- getIncrementRecords repo
-  mapM_ print $ filter ((increment <=) . irDate) l
-  where
-    (_:path) = fpath
-    increment = head $ splitDirectories path
-    remainder = joinPath $ tail $ splitDirectories path
-    realdir = repo </> remainder
-    incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
+do_readdir = readdir cur_files inc_files incr
+-- simulate reading a directory
+-- accept [files-in-repo] [files-in-increments-dir]
+-- return [files-to-be-displayed]
+readdir :: [String] -> [String] -> String -> [String]
+readdir curr incr incdate = curr ++ incrtypes
+    where
+        incrtypes = map show $ map maybeIncrement incr
+    --filter ((increment <=) . irDate) $ getIncrementRecords files
 
 data IncrementRecord = IncrementRecord {
                            irPath :: FilePath,
                            irDate :: String,
                            irSuff :: String
                        } deriving (Show)
+
+-- take a filename and possibly return an IncrementRecord
+maybeIncrement :: String -> Maybe IncrementRecord
+maybeIncrement s = case s =~~ datetime_regex :: Maybe (String, String, String, [String]) of
+            (Just (f,_,s,(d:ds))) -> Just IncrementRecord { irPath = f, irDate = d, irSuff = s }
+            _ -> Nothing
 
 -- assume we're reading the root and not a subdir
 -- return files which match increment regex
