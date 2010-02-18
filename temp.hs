@@ -66,24 +66,4 @@ maybeIncrement s = case s =~~ datetime_regex :: Maybe (String, String, String, [
             (Just (f,_,s,(d:ds))) -> Just IncrementRecord { irPath = f, irDate = d, irSuff = s }
             _ -> Nothing
 
--- assume we're reading the root and not a subdir
--- return files which match increment regex
-getIncrementRecords :: RdiffContext -> IO [IncrementRecord]
-getIncrementRecords repo = do
-    l <- getDirectoryContents incdir
-    let m = map mapfn l
-    return $ fnargh m
-    where
-        incdir = repo </> "rdiff-backup-data" </> "increments"
-        mapfn :: FilePath -> Maybe IncrementRecord
-        mapfn fp = case fp =~~ datetime_regex :: Maybe (String, String, String, [String]) of
-            (Just (f,_,s,(d:ds))) -> Just IncrementRecord { irPath = f, irDate = d, irSuff = s }
-            _ -> Nothing
-        -- this is bound to be re-implementing something in the Prelude
-        fnargh :: [Maybe a] -> [a]
-        fnargh [] = []
-        fnargh ((Just x):xs) = x:(fnargh xs)
-        fnargh (Nothing:xs) = fnargh xs
-
-real = "/home/jon/wd/mine/archfs3/real/dest"
 datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
