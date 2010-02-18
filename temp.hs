@@ -45,16 +45,20 @@ do_readdir = readdir cur_files inc_files incr
 -- accept [files-in-repo] [files-in-increments-dir]
 -- return [files-to-be-displayed]
 readdir :: [String] -> [String] -> String -> [String]
-readdir curr incr incdate = curr ++ incrtypes
+readdir curr incr incdate = curr ++ incrshow
     where
-        incrtypes = map show $ map maybeIncrement incr
+        maybeincrtypes = map maybeIncrement incr              -- build possible IncrementRecords
+        incrtypes = filter (/= Nothing) maybeincrtypes         -- get definite IncrementRecords
+        incrtypes' = map (\x-> case x of Just y -> y) incrtypes -- unpack from the Just wrapper
+        relevant = filter ((incdate <=) . irDate) incrtypes'   -- remove irrelevant IncrementRecords
+        incrshow = map show relevant                          -- display something
     --filter ((increment <=) . irDate) $ getIncrementRecords files
 
 data IncrementRecord = IncrementRecord {
                            irPath :: FilePath,
                            irDate :: String,
                            irSuff :: String
-                       } deriving (Show)
+                       } deriving (Show,Eq)
 
 -- take a filename and possibly return an IncrementRecord
 maybeIncrement :: String -> Maybe IncrementRecord
