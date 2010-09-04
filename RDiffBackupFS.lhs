@@ -8,7 +8,7 @@
 > import System.Fuse
 > import System.Environment -- getArgs, withArgs
 > import System.Directory -- doesDirectoryExist, canonicalizePath
-> import System.FilePath -- pathSeparator, </>
+> import System.FilePath -- pathSeparator, </>, takeFileName
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
@@ -53,7 +53,7 @@ The main method is so short I feel it's best to get it out of the way here.
 >         then return ()
 >         else error "not a valid rdiff-backup directory"
 > 
-> datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DDZ)\\."
+> datetime_regex       = replace "D" "[0-9]" "\\.(DDDD-DD-DDTDD:DD:DD(Z|[-+]DD:DD))\\."
 > current_mirror_regex = "^current_mirror" ++ datetime_regex ++ "data$"
 > increment_regex      = "^increments" ++ datetime_regex ++ "dir$"
 > 
@@ -370,15 +370,22 @@ An increment's file tree will look as follows (as far as I understand it)
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory rdiffCtx fdir = do
->     ctx <- getFuseContext
 >     l <- getDirectoryContents realdir
->     ret <- mapM (fileNameToTuple . (realdir </>)) $ missingFiles l
->     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
+>     current <- rdiffCurrentReadDirectory rdiffCtx fdir
+>     case current of
+>         Left e  -> return (Left e)
+>         Right c -> do
+>             ret <- mapM (fileNameToTuple . (realdir </>)) $ missingFiles l
+>             return $ Right $ c ++ (map (\(s,f) -> (takeFileName s, f)) ret)
 >     where (_:dir) = fdir
 >           prefix = head $ splitDirectories dir
 >           remainder = joinPath $ tail $ splitDirectories dir
 >           realdir = rdiffCtx </> "rdiff-backup-data" </> "increments" </> remainder
 >           missingFiles l = filter (isInfixOf prefix) l
+>           snapshots = filter (isSuffixOf ".snapshot.gz")
+
+There's a bug in missingFiles above, the filename could contain the date/timestamp by
+coincidence.
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink rdiffCtx fpath = return $ Left eNOSYS
