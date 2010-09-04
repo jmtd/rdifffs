@@ -28,21 +28,22 @@ currentReadDirectory :: [Fpair]
 currentReadDirectory = filter ((/= "rdiff-backup-data") . fst) currentDirectory
 
 incrementReadDirectory :: String -> [Fpair]
-incrementReadDirectory incr = nubBy pairCmp $
+incrementReadDirectory incr = nub' $
 	(incfiles ++ dirfiles ++ difffiles ++ currentReadDirectory) \\\ missfiles where
+	nub' = nubBy pairCmp
+	pairCmp (a,_) (b,_) = a == b
+	(\\\) = deleteFirstsBy pairCmp -- specialised '\\'
 	incfiles  = fetch ".snapshot.gz"
 	missfiles = fetch ".missing"
 	difffiles = fetch ".diff.gz"
 	dirfiles  = map (second (\_->Dir)) (fetch ".dir")
-	fetch s = hasSuffix ('.':incr) $ hasSuffix s increDirectory
-	pairCmp (a,_) (b,_) = a == b
-	(\\\) = deleteFirstsBy pairCmp -- specialised '\\'
+	fetch s = getBySuffix ('.':incr) $ getBySuffix s increDirectory
 
 -- returns sublist of strings which have the provided suffix,
 -- with the suffix removed
-hasSuffix :: String -> [Fpair] -> [Fpair]
-hasSuffix _ [] = []
-hasSuffix suffix fps = 
+getBySuffix :: String -> [Fpair] -> [Fpair]
+getBySuffix _ [] = []
+getBySuffix suffix fps = 
 	map (first (trimSuffix suffix)) $ filter (isSuffixOf suffix . fst) fps
 	where
 		trimSuffix s = reverse . (drop (length s)) . reverse
