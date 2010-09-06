@@ -1,8 +1,8 @@
 module RdiffFS
   (
-    increment
-  , increment2
-  , incrementReadDirectory 
+    incrementReadDirectory 
+  , testi
+  , testi2
   ) where
 
 {-
@@ -43,20 +43,20 @@ s = second s' where
 
 -- test data
 currentDirectory = [ ("b", defaultFile), ("rdiff-backup-data", defaultDir) ]
-increDirectory   = [ ("a.2010-09-04T12:49:27+01:00.snapshot.gz", defaultFile),
+incrementDirectory   = [ ("a.2010-09-04T12:49:27+01:00.snapshot.gz", defaultFile),
 	("a.2010-10-04T12:49:27+01:00.snapshot.gz", defaultFile),
 	("c.2010-10-04T12:49:27+01:00.dir", defaultFile),
 	("b.2010-09-04T12:49:27+01:00.missing", defaultFile) ]
-increment = "2010-09-04T12:49:27+01:00"
-increment2 = "2010-10-04T12:49:27+01:00"
 
+testi  = incrementReadDirectory incrementDirectory currentReadDirectory "2010-09-04T12:49:27+01:00"
+testi2 = incrementReadDirectory incrementDirectory currentReadDirectory "2010-10-04T12:49:27+01:00"
 
 currentReadDirectory :: [Fpair]
 currentReadDirectory = filter ((/= "rdiff-backup-data") . fst) currentDirectory
 
-incrementReadDirectory :: String -> [Fpair]
-incrementReadDirectory incr = nub' $
-	(incfiles ++ dirfiles ++ difffiles ++ currentReadDirectory) \\\ missfiles where
+incrementReadDirectory :: [Fpair] -> [Fpair] -> String -> [Fpair]
+incrementReadDirectory    increDirectory curDirectory incr = nub' $
+	(incfiles ++ dirfiles ++ difffiles ++ curDirectory) \\\ missfiles where
 	nub' = nubBy pairCmp
 	pairCmp (a,_) (b,_) = a == b
 	(\\\) = deleteFirstsBy pairCmp -- specialised '\\'

@@ -370,23 +370,23 @@ An increment's file tree will look as follows (as far as I understand it)
 > incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
-> rdiffIncrementReadDirectory rdiffCtx fdir = do
->     l <- getDirectoryContents realdir
->     current <- rdiffCurrentReadDirectory rdiffCtx fdir
->     case current of
->         Left e  -> return (Left e)
->         Right c -> do
->             ret <- mapM (fileNameToTuple . (realdir </>)) $ missingFiles l
->             return $ Right $ c ++ (map (\(s,f) -> (takeFileName s, f)) ret)
+> rdiffIncrementReadDirectory inc fdir = do
+>     i <- getDirectoryContents incdir
+>     c <- rdiffCurrentReadDirectory inc fdir
+>     case c of
+>         Left e   -> return (Left e)
+>         Right c' -> (return . Right) $ incrementReadDirectory (filesStat i) c' inc
 >     where (_:dir) = fdir
->           prefix = head $ splitDirectories dir
 >           remainder = joinPath $ tail $ splitDirectories dir
->           realdir = rdiffCtx </> "rdiff-backup-data" </> "increments" </> remainder
->           missingFiles l = filter (isInfixOf prefix) l
->           snapshots = filter (isSuffixOf ".snapshot.gz")
+>           incdir = inc </> "rdiff-backup-data" </> "increments" </> remainder
 
-There's a bug in missingFiles above, the filename could contain the date/timestamp by
-coincidence.
+> filesStat :: [FilePath] -> [(FilePath, FileStat)]
+> filesStat = error "not implemented"
+
+TODO: we need to handle a failure from getDirectoryContents (exception?)
+
+This function does all the IO to obtain file lists, then passes the results to
+incrementReadDirectory which is a pure function.
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink rdiffCtx fpath = return $ Left eNOSYS
