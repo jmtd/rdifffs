@@ -1,4 +1,4 @@
 all: RDiffBackupFS
 
-RDiffBackupFS: RDiffBackupFS.lhs
+RDiffBackupFS: RDiffBackupFS.lhs RdiffFS.hs
 	ghc -threaded --make RDiffBackupFS.lhs

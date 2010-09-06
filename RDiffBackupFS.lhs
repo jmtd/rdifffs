@@ -13,6 +13,7 @@
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
 > import Data.List -- isInfixOf
+> import RdiffFS
 
 The main method is so short I feel it's best to get it out of the way here.
 

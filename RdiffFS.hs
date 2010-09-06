@@ -1,3 +1,10 @@
+module RdiffFS
+  (
+    increment
+  , increment2
+  , incrementReadDirectory 
+  ) where
+
 {-
 
 the objective of this file is to implement the IncrementReaddir function
