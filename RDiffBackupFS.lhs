@@ -375,13 +375,12 @@ An increment's file tree will look as follows (as far as I understand it)
 >     c <- rdiffCurrentReadDirectory inc fdir
 >     case c of
 >         Left e   -> return (Left e)
->         Right c' -> (return . Right) $ incrementReadDirectory (filesStat i) c' inc
+>         Right c' -> do
+>           i' <- mapM (\f -> do f' <- fileNameToFileStat f; return (f,f')) i
+>           (return . Right) $ incrementReadDirectory i' c' inc
 >     where (_:dir) = fdir
 >           remainder = joinPath $ tail $ splitDirectories dir
 >           incdir = inc </> "rdiff-backup-data" </> "increments" </> remainder
-
-> filesStat :: [FilePath] -> [(FilePath, FileStat)]
-> filesStat = error "not implemented"
 
 TODO: we need to handle a failure from getDirectoryContents (exception?)
 
