@@ -336,11 +336,16 @@ Stub increment functions (for now)
 >     dates <- getDates rdiffCtx
 >     ctx <- getFuseContext
 >     if prefix `elem` (map getRdiffBackupDate $ tail dates)
->         then return $ Right $ dirStat ctx
+>         then do
+>            f <- fileNameToFileStat realpath 
+>            return $ Right f
 >         else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
 >         prefix = head $ splitDirectories path
+>         remainder = joinPath $ tail $ splitDirectories path
+>         incdir = rdiffCtx </> "rdiff-backup-data" </> "increments"
+>         realpath = incdir </> remainder
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory rdiffCtx fdir
