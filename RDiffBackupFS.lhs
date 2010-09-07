@@ -370,17 +370,19 @@ An increment's file tree will look as follows (as far as I understand it)
 > incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
-> rdiffIncrementReadDirectory inc fdir = do
+> rdiffIncrementReadDirectory repo fdir = do
 >     i <- getDirectoryContents incdir
->     c <- rdiffCurrentReadDirectory inc fdir
+>     c <- rdiffCurrentReadDirectory repo $ pathSeparator: "current" </> remainder
 >     case c of
->         Left e   -> return (Left e)
+>         Left e -> return (Left e)
 >         Right c' -> do
->           i' <- mapM (\f -> do f' <- fileNameToFileStat f; return (f,f')) i
+>           i' <- mapM (\f -> do f' <- fstat f; return (f,f')) (i \\ [".", ".."])
 >           (return . Right) $ incrementReadDirectory i' c' inc
 >     where (_:dir) = fdir
+>           inc = head $ splitDirectories dir
 >           remainder = joinPath $ tail $ splitDirectories dir
->           incdir = inc </> "rdiff-backup-data" </> "increments" </> remainder
+>           incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
+>           fstat f = fileNameToFileStat (incdir </> f)
 
 TODO: we need to handle a failure from getDirectoryContents (exception?)
 
