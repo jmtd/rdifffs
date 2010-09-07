@@ -73,4 +73,4 @@ getBySuffix _ [] = []
 getBySuffix suffix fps = 
 	map (first (trimSuffix suffix)) $ filter (isSuffixOf suffix . fst) fps
 	where
-		trimSuffix s = reverse . (drop (length s)) . reverse
+		trimSuffix s f = take (length f - length s) f
