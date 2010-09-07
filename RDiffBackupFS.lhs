@@ -331,6 +331,11 @@ fairly useful exception types.
 
 Stub increment functions (for now)
 
+this clearly won't work as the filename won't exist without a
+<increment>.<type> suffix. Probably need to build a list of filenames
+for <increment>, remove the suffixes and go from there (see
+rdiffIncrementReadDirectory later on)
+
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
