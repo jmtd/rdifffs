@@ -7,7 +7,7 @@
 > import System.Posix.IO
 > import System.Fuse
 > import System.Environment -- getArgs, withArgs
-> import System.Directory -- doesDirectoryExist, canonicalizePath
+> import System.Directory -- doesDirectoryExist, canonicalizePath, getDirectoryContents
 > import System.FilePath -- pathSeparator, </>, takeFileName
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
