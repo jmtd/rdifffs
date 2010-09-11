@@ -345,8 +345,8 @@ filter for increment suffix types
 >     ctx <- getFuseContext
 >     if increment `elem` increments
 >         then do
->            i <- getDirectoryContents incdir
->            filter (`elem` incrementSuffixes) i -- won't work
+>            files <- getDirectoryContents incdir
+(incfiles files)
 >            return $ Right f
 >         else return $ Left eNOENT
 >     where
@@ -356,12 +356,18 @@ filter for increment suffix types
 >         remainder = joinPath $ tail $ splitDirectories path
 >         incdir = rdiffCtx </> "rdiff-backup-data" </> "increments"
 >         realpath = incdir </> remainder
->         incfiles  = fetch ".snapshot.gz"
->         missfiles = fetch ".missing"
->         difffiles = fetch ".diff.gz"
->         dirfiles  = map (second (\_->defaultDir)) (fetch ".dir")
->         fetch s = getBySuffix ('.':incr) $ getBySuffix s increDirectory
+>         incfiles files = foldl (++) [] $ map filterSplitSuffix files
 
+> stripSuffix :: String -> String -> Maybe (String, String)
+> stripSuffix suffix instring =
+>   if suffix `isSuffixOf` instring
+>      then Just $ (take (length instring - length suffix) instring, suffix)
+>      else Nothing
+
+filterSplitSuffix takes a filename and returns either [] or [(f,suffix)] where f is
+the input 'x' with the suffix stripped out.
+
+> filterSplitSuffix x = mapMaybe (\y -> y x) $ map stripSuffix incrementSuffixes
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory rdiffCtx fdir
