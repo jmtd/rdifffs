@@ -12,7 +12,7 @@
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
-> import Data.List -- isInfixOf
+> import Data.List -- isInfixOf, isSuffixOf
 > import RdiffFS
 
 The main method is so short I feel it's best to get it out of the way here.
@@ -336,21 +336,32 @@ this clearly won't work as the filename won't exist without a
 for <increment>, remove the suffixes and go from there (see
 rdiffIncrementReadDirectory later on)
 
+list increment dir
+filter for increment suffix types
+
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
 >     ctx <- getFuseContext
->     if prefix `elem` (map getRdiffBackupDate $ tail dates)
+>     if increment `elem` increments
 >         then do
->            f <- fileNameToFileStat realpath 
+>            i <- getDirectoryContents incdir
+>            filter (`elem` incrementSuffixes) i -- won't work
 >            return $ Right f
 >         else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
->         prefix = head $ splitDirectories path
+>         increment = head $ splitDirectories path
+>         increments = map getRdiffBackupDate $ tail dates
 >         remainder = joinPath $ tail $ splitDirectories path
 >         incdir = rdiffCtx </> "rdiff-backup-data" </> "increments"
 >         realpath = incdir </> remainder
+>         incfiles  = fetch ".snapshot.gz"
+>         missfiles = fetch ".missing"
+>         difffiles = fetch ".diff.gz"
+>         dirfiles  = map (second (\_->defaultDir)) (fetch ".dir")
+>         fetch s = getBySuffix ('.':incr) $ getBySuffix s increDirectory
+
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory rdiffCtx fdir
@@ -378,6 +389,8 @@ An increment's file tree will look as follows (as far as I understand it)
       * .dir means the filename was a dir at this point
 
 > incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
+> isIncrementFile :: String -> Bool
+> isIncrementFile s = or $ map (\y -> y s) $ map isSuffixOf incrementSuffixes
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory repo fdir = do

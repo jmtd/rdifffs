@@ -3,6 +3,7 @@ module RdiffFS
     incrementReadDirectory 
   , testi
   , testi2
+  , getBySuffix
   ) where
 
 {-
