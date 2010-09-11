@@ -35,7 +35,12 @@ datefiles3 = map (first (\a-> take (length a - length inc -1) a)) datefiles
 -- debatably better?
 datefiles4 = map (first (fst . fromJust . stripSuffix ('.':inc))) datefiles
 
-{- at this point, datefiles{2,3,4} is [(fname, suffix)]. It should be either:
+{- at this point, datefiles{2,3,4} is [(fname, suffix)].
+
+       ***Once we've further filtered on the filename that is being
+          fstatted!***
+
+     It should be either:
  -   * zero-length => just call the currentStat method
  -   * length 1    => the increment file is relevant,
  -   * other       => wtf. just throw an error.
