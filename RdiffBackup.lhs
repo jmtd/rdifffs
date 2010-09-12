@@ -1,4 +1,4 @@
-> module RdiffBackup (verifyArgs, ensureRdiffBackupDir, rdiffFSOps) where
+> module RdiffBackup (ensureRdiffBackupDir, HT) where
 > import qualified Data.ByteString.Char8 as B
 > import Foreign.C.Error
 > import System.Posix.Types
@@ -15,21 +15,14 @@
 > import Data.Maybe -- mapMaybe
 > import RdiffFS
 
-> usage :: String
-> usage = "archfs3 <rdiff-backup directory> <mountpoint>"
-> 
+> type HT = ()
 > type RdiffContext = String
 > 
 > data RdiffBackup = Current String | Increment String deriving (Eq,Show)
+>
 > getRdiffBackupDate :: RdiffBackup -> String
 > getRdiffBackupDate (Current x) = x
 > getRdiffBackupDate (Increment x) = x
-> 
-> -- we need at least two CMDs: one for us (underlay), one for fuse (mntpoint)
-> verifyArgs :: [String] -> IO ()
-> verifyArgs xs | length xs > 1 = return ()
-> verifyArgs xs | otherwise = error $
->     "invalid number of command-line arguments.\n" ++ "usage: " ++ usage
 > 
 > isRdiffBackupDir :: FilePath -> IO Bool
 > isRdiffBackupDir path = do
@@ -67,18 +60,6 @@
 >     l <- getDirectoryContents $ rdiffCtx </> "rdiff-backup-data"
 >     return $ (getCurrentMirror l) : (getIncrements l)
 > 
-> type HT = ()
-> 
-> rdiffFSOps :: RdiffContext -> FuseOperations HT
-> rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat rdiffCtx
->                             , fuseOpen        = rdiffOpen rdiffCtx
->                             , fuseRead        = rdiffRead rdiffCtx
->                             , fuseOpenDirectory = rdiffOpenDirectory rdiffCtx
->                             , fuseReadDirectory = rdiffReadDirectory rdiffCtx
->                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
->                             , fuseReadSymbolicLink = rdiffReadSymbolicLink rdiffCtx
->                             }
-
 > buildStat ctx entrytype fsize = FileStat { statEntryType = entrytype
 >                          , statFileMode = foldr1 unionFileModes
 >                                             [ ownerReadMode
