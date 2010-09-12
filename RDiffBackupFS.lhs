@@ -13,6 +13,7 @@
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
 > import Data.List -- isInfixOf, isSuffixOf
+> import Data.Maybe -- mapMaybe
 > import RdiffFS
 
 The main method is so short I feel it's best to get it out of the way here.
@@ -331,29 +332,26 @@ fairly useful exception types.
 
 Stub increment functions (for now)
 
-this clearly won't work as the filename won't exist without a
-<increment>.<type> suffix. Probably need to build a list of filenames
-for <increment>, remove the suffixes and go from there (see
-rdiffIncrementReadDirectory later on)
+Most of these routines need to take a path /<date>/foo/bar and
+split it up into <date> and foo/bar bits
 
-list increment dir
-filter for increment suffix types
+> rSplitPath :: FilePath -> (FilePath, FilePath)
+> rSplitPath path = (head split, joinPath $ tail split) where
+>    split = splitDirectories path
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
 >     ctx <- getFuseContext
->     if increment `elem` increments
+>     if increment `elem` (increments dates)
 >         then do
 >            files <- getDirectoryContents incdir
-(incfiles files)
->            return $ Right f
+>            return $ Left eNOSYS
 >         else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
->         increment = head $ splitDirectories path
->         increments = map getRdiffBackupDate $ tail dates
->         remainder = joinPath $ tail $ splitDirectories path
+>         (increment, remainder) = rSplitPath path
+>         increments dates = map getRdiffBackupDate $ tail dates
 >         incdir = rdiffCtx </> "rdiff-backup-data" </> "increments"
 >         realpath = incdir </> remainder
 >         incfiles files = foldl (++) [] $ map filterSplitSuffix files
