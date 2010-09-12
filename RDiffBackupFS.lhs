@@ -1,5 +1,4 @@
-> module Main where
-> 
+> module RDiffBackupFS (verifyArgs, ensureRdiffBackupDir, rdiffFSOps) where
 > import qualified Data.ByteString.Char8 as B
 > import Foreign.C.Error
 > import System.Posix.Types
@@ -13,17 +12,8 @@
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
 > import Data.List -- isInfixOf, isSuffixOf
+> import Data.Maybe -- mapMaybe
 > import RdiffFS
-
-The main method is so short I feel it's best to get it out of the way here.
-
-> main :: IO ()
-> main = do
->     args <- getArgs
->     verifyArgs args
->     path <- canonicalizePath $ head args
->     ensureRdiffBackupDir path
->     withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
 
 > usage :: String
 > usage = "archfs3 <rdiff-backup directory> <mountpoint>"
@@ -343,20 +333,22 @@ filter for increment suffix types
 > rdiffIncrementGetFileStat rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
 >     ctx <- getFuseContext
->     if increment `elem` increments
+>     if increment `elem` (increments dates)
 >         then do
 >            files <- getDirectoryContents incdir
-(incfiles files)
->            return $ Right f
+>            return $ Left eNOSYS
 >         else return $ Left eNOENT
 >     where
 >         (_:path) = fpath
 >         increment = head $ splitDirectories path
->         increments = map getRdiffBackupDate $ tail dates
->         remainder = joinPath $ tail $ splitDirectories path
 >         incdir = rdiffCtx </> "rdiff-backup-data" </> "increments"
->         realpath = incdir </> remainder
->         incfiles files = foldl (++) [] $ map filterSplitSuffix files
+>         increments dates = map getRdiffBackupDate $ tail dates
+
+more stuff, unfinished:
+
+         remainder = joinPath $ tail $ splitDirectories path
+         realpath = incdir </> remainder
+         incfiles files = foldl (++) [] $ map filterSplitSuffix files
 
 > stripSuffix :: String -> String -> Maybe (String, String)
 > stripSuffix suffix instring =
