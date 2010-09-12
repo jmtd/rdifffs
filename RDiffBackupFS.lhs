@@ -120,7 +120,7 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 
 > data WhichBackupType = CurrentBackup | IncrementBackup | Neither deriving(Eq)
 > whichBackup :: RdiffContext -> String -> IO WhichBackupType
-> whichBackup repo fpath = do
+> whichBackup repo path = do
 >     dates <- getDates repo
 >     if (Current prefix) `elem` dates
 >         then return CurrentBackup
@@ -128,7 +128,6 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 >              then return IncrementBackup
 >              else return Neither
 >     where
->         (_:path) = fpath
 >         prefix = head $ splitDirectories path
 
 rdiffGetFileStat implements getattr(2). We handle requests for the root
@@ -142,20 +141,24 @@ directory and the /current symlink within.
 >     ctx <- getFuseContext
 >     return $ Right $ linkStat ctx
 > rdiffGetFileStat repo fpath = do
->     which <- whichBackup repo fpath
+>     which <- whichBackup repo path
 >     case which of
->         CurrentBackup   -> rdiffGetCurrentFileStat repo fpath
->         IncrementBackup -> rdiffIncrementGetFileStat repo fpath
+>         CurrentBackup   -> rdiffGetCurrentFileStat repo path
+>         IncrementBackup -> rdiffIncrementGetFileStat repo path
 >         Neither         -> return $ Left eNOENT
+>     where
+>         (_:path) = fpath
 
 > rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffOpenDirectory _ "/" = return eOK
 > rdiffOpenDirectory repo fdir = do
->     which <- whichBackup repo fdir
+>     which <- whichBackup repo dir
 >     case which of
->         CurrentBackup   -> rdiffCurrentOpenDirectory repo fdir
->         IncrementBackup -> rdiffIncrementOpenDirectory repo fdir
+>         CurrentBackup   -> rdiffCurrentOpenDirectory repo dir
+>         IncrementBackup -> rdiffIncrementOpenDirectory repo dir
 >         Neither         -> return eNOENT
+>     where
+>         (_:dir) = fdir
 
 > rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffReadDirectory repo "/" = do
@@ -164,27 +167,33 @@ directory and the /current symlink within.
 >     return $ Right $ (dirs ctx (map getRdiffBackupDate dates)) ++ ([("current", linkStat ctx)])
 >     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
 > rdiffReadDirectory repo fdir = do
->     which <- whichBackup repo fdir
+>     which <- whichBackup repo dir
 >     case which of
->         CurrentBackup   -> rdiffCurrentReadDirectory repo fdir
->         IncrementBackup -> rdiffIncrementReadDirectory repo fdir
+>         CurrentBackup   -> rdiffCurrentReadDirectory repo dir
+>         IncrementBackup -> rdiffIncrementReadDirectory repo dir
 >         Neither         -> return $ Left eNOENT
+>     where
+>         (_:dir) = fdir
 
 > rdiffOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffOpen repo path mode flags = do
+> rdiffOpen repo fpath mode flags = do
 >     which <- whichBackup repo path
 >     case which of
 >         CurrentBackup   -> rdiffCurrentOpen repo path mode flags
 >         IncrementBackup -> rdiffIncrementOpen repo path mode flags
 >         Neither         -> return $ Left eNOENT
+>     where
+>         (_:path) = fpath
 
 > rdiffRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffRead repo path ht byteCount offset = do
+> rdiffRead repo fpath ht byteCount offset = do
 >     which <- whichBackup repo path
 >     case which of
 >         CurrentBackup   -> rdiffCurrentRead   repo path ht byteCount offset
 >         IncrementBackup -> rdiffIncrementRead repo path ht byteCount offset
 >         Neither         -> return $ Left eNOENT
+>     where
+>         (_:path) = fpath
 
 > rdiffGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 > rdiffGetFileSystemStats str =
@@ -208,13 +217,15 @@ to enforce this.
 >     dates <- getDates repo
 >     return $ Right $ getRdiffBackupDate $ head dates
 > rdiffReadSymbolicLink repo fpath = do
->     which <- whichBackup repo fpath
+>     which <- whichBackup repo path
 >     case which of
->         CurrentBackup    -> rdiffCurrentReadSymbolicLink repo fpath
->         IncrementBackup  -> rdiffIncrementReadSymbolicLink repo fpath
+>         CurrentBackup    -> rdiffCurrentReadSymbolicLink repo path
+>         IncrementBackup  -> rdiffIncrementReadSymbolicLink repo path
 >         Neither          -> return $ Left eNOSYS
+>     where
+>         (_:path) = fpath
 
-> ----------------------------------------------------------------------------
+----------------------------------------------------------------------------
 
 Some helper functions for the Current and Increment sets.
 
@@ -267,28 +278,26 @@ Now for the Current-functions. These handle IO requests for stuff under the
 current backup tree.
 
 > rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffGetCurrentFileStat repo fpath = do
+> rdiffGetCurrentFileStat repo path = do
 >     fstat <- fileNameToFileStat realPath
 >     return $ Right $ fstat
 >     where
->         (_:path) = fpath
 >         realPath = joinPath $ repo:(tail $ splitDirectories path)
 
 > rdiffCurrentReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
-> rdiffCurrentReadSymbolicLink repo fpath = do
+> rdiffCurrentReadSymbolicLink repo path = do
 >     target <- readSymbolicLink $ repo </> remainder
 >     return $ Right $ target
 >     where
->         (_:path) = fpath
 >         remainder = joinPath $ tail $ splitDirectories path
 
-> rdiffCurrentReadDirectory repo fdir = do
+> rdiffCurrentReadDirectory repo dir = do
 >     l <- getDirectoryContents realdir
 >     ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
 >     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
->     where (_:dir) = fdir
->           remainder = joinPath $ tail $ splitDirectories dir
->           realdir = repo </> remainder
+>     where
+>         remainder = joinPath $ tail $ splitDirectories dir
+>         realdir = repo </> remainder
 
 This is a really ugly function. We need to call readdir(2) on the underlying
 directory and try to pass any error on up to our readdir(2) response. Hence
@@ -297,9 +306,9 @@ be to just getDirectoryContents, which is in System.Directory and returns some
 fairly useful exception types.
 
 > rdiffCurrentOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffCurrentOpenDirectory repo fpath = do
+> rdiffCurrentOpenDirectory repo path = do
 >     catch (toTry $ repo </> remainder) handler
->     where (_:path) = fpath
+>     where
 >           remainder = joinPath $ tail $ splitDirectories path
 >           toTry :: FilePath -> IO Errno
 >           toTry path = do
@@ -310,7 +319,7 @@ fairly useful exception types.
 >           handler e = return eACCES
 
 > rdiffCurrentOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffCurrentOpen repo fpath mode flags =
+> rdiffCurrentOpen repo path mode flags =
 >     case mode of
 >         ReadOnly -> do             -- Read Write Execute
 >             ok <- fileAccess realpath True False False
@@ -318,15 +327,15 @@ fairly useful exception types.
 >                 then return $ Right ()
 >                 else return $ Left eACCES
 >         _        ->  return $ Left eACCES
->     where (_:path) = fpath
+>     where
 >           remainder = joinPath $ tail $ splitDirectories path
 >           realpath = repo </> remainder
 
 > rdiffCurrentRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffCurrentRead repo fpath _ byteCount offset = do
+> rdiffCurrentRead repo path _ byteCount offset = do
 >     stuff <- readFile realpath
 >     return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) $ B.pack stuff
->     where (_:path) = fpath
+>     where
 >           remainder = joinPath $ tail $ splitDirectories path
 >           realpath = repo </> remainder
 
@@ -340,7 +349,7 @@ split it up into <date> and foo/bar bits
 >    split = splitDirectories path
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffIncrementGetFileStat repo fpath = do
+> rdiffIncrementGetFileStat repo path = do
 >     dates <- getDates repo
 >     if increment `elem` (increments dates)
 >         then do
@@ -348,7 +357,6 @@ split it up into <date> and foo/bar bits
 >            return $ Left eNOSYS
 >         else return $ Left eNOENT
 >     where
->         (_:path) = fpath
 >         (increment, remainder) = rSplitPath path
 >         increments dates = map getRdiffBackupDate $ tail dates
 >         incdir = repo </> "rdiff-backup-data" </> "increments"
@@ -367,11 +375,10 @@ the input 'x' with the suffix stripped out.
 > filterSplitSuffix x = mapMaybe (\y -> y x) $ map stripSuffix incrementSuffixes
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffIncrementOpenDirectory repo fdir
+> rdiffIncrementOpenDirectory repo dir
 >     | dir == prefix = return eOK
 >     | otherwise     = return eNOSYS
->     where (_:dir) = fdir
->           prefix = head $ splitDirectories dir
+>     where prefix = head $ splitDirectories dir
 
 Read the contents of a directory underneath an increment. We need to look
 at files under <root>/rdiff-backup-data/increments/<path> matching
@@ -396,7 +403,7 @@ An increment's file tree will look as follows (as far as I understand it)
 > isIncrementFile s = or $ map (\y -> y s) $ map isSuffixOf incrementSuffixes
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
-> rdiffIncrementReadDirectory repo fdir = do
+> rdiffIncrementReadDirectory repo dir = do
 >     i <- getDirectoryContents incdir
 >     c <- rdiffCurrentReadDirectory repo $ pathSeparator: "current" </> remainder
 >     case c of
@@ -404,8 +411,7 @@ An increment's file tree will look as follows (as far as I understand it)
 >         Right c' -> do
 >           i' <- mapM (\f -> do f' <- fstat f; return (f,f')) (i \\ [".", ".."])
 >           (return . Right) $ incrementReadDirectory i' c' inc
->     where (_:dir) = fdir
->           inc = head $ splitDirectories dir
+>     where inc = head $ splitDirectories dir
 >           remainder = joinPath $ tail $ splitDirectories dir
 >           incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
 >           fstat f = fileNameToFileStat (incdir </> f)
@@ -416,7 +422,7 @@ This function does all the IO to obtain file lists, then passes the results to
 incrementReadDirectory which is a pure function.
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
-> rdiffIncrementReadSymbolicLink repo fpath = return $ Left eNOSYS
+> rdiffIncrementReadSymbolicLink repo path = return $ Left eNOSYS
 
 > rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffIncrementOpen repo path mode flags = return $ Left eNOENT
