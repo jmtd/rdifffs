@@ -5,6 +5,7 @@
 > import System.Posix.Types
 > import System.Posix.Files
 > import System.Posix.IO
+> import System.IO.Error -- isPermissionError etc.
 > import System.Fuse
 > import System.Environment -- getArgs, withArgs
 > import System.Directory -- doesDirectoryExist, canonicalizePath, getDirectoryContents
@@ -286,13 +287,19 @@ current backup tree.
 >         remainder = joinPath $ tail $ splitDirectories path
 
 > rdiffCurrentReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
-> rdiffCurrentReadDirectory repo dir = do
->     l <- getDirectoryContents realdir
->     ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
->     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
->     where
->         remainder = joinPath $ tail $ splitDirectories dir
->         realdir = repo </> remainder
+> rdiffCurrentReadDirectory repo dir = do catch (toTry repo dir) handler where
+>     toTry :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])   
+>     toTry repo dir = do                                            
+>         l <- getDirectoryContents realdir
+>         ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
+>         return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
+>         where
+>             remainder = joinPath $ tail $ splitDirectories dir
+>             realdir = repo </> remainder
+>     handler :: IOError -> IO (Either Errno [(FilePath, FileStat)])
+>     handler e | isPermissionError e   = return $ Left eACCES
+>               | isDoesNotExistError e = return $ Left eNOENT
+>               | otherwise             = return $ Left eFAULT
 
 This is a really ugly function. We need to call readdir(2) on the underlying
 directory and try to pass any error on up to our readdir(2) response. Hence
