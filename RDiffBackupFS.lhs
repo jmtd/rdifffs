@@ -285,6 +285,7 @@ current backup tree.
 >     where
 >         remainder = joinPath $ tail $ splitDirectories path
 
+> rdiffCurrentReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffCurrentReadDirectory repo dir = do
 >     l <- getDirectoryContents realdir
 >     ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
