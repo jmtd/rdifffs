@@ -304,17 +304,13 @@ be to just getDirectoryContents, which is in System.Directory and returns some
 fairly useful exception types.
 
 > rdiffCurrentOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffCurrentOpenDirectory repo path = do
->     catch (toTry $ repo </> remainder) handler
->     where
->           remainder = joinPath $ tail $ splitDirectories path
->           toTry :: FilePath -> IO Errno
->           toTry path = do
->               ds <- openDirStream path
->               closeDirStream ds
->               return eOK
->           handler :: IOError -> IO Errno
->           handler e = return eACCES
+> rdiffCurrentOpenDirectory repo dir = do catch try handler where
+>     realdir = joinPath $ repo:(tail $ splitDirectories dir)
+>     try = do
+>         ds <- openDirStream realdir
+>         closeDirStream ds
+>         return eOK
+>     handler e = return eACCES
 
 > rdiffCurrentOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffCurrentOpen repo path mode flags =
