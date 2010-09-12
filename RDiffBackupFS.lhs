@@ -16,6 +16,7 @@
 > import Data.List -- isInfixOf, isSuffixOf
 > import Data.Maybe -- mapMaybe
 > import Foreign -- .&.
+> import Control.Arrow -- first
 > import RdiffFS
 
 The main method is so short I feel it's best to get it out of the way here.
@@ -342,20 +343,63 @@ split it up into <date> and foo/bar bits
 > rSplitPath path = (head split, joinPath $ tail split) where
 >    split = splitDirectories path
 
+most of these increment functions will say "hey, I have been given a fuse-esque
+path, and I need to know what to do with it! first, split out the increment date
+from the file relative path; then perhaps validate the increment date;
+
+> isValidIncrement :: RdiffContext -> String -> IO Bool
+> isValidIncrement repo path = do
+>     dates <- getDates repo
+>     return (increment `elem` increments dates) where
+>         (increment, remainder) = rSplitPath path
+>         increments = (map getRdiffBackupDate) . tail
+
+get me all the increment files in the increment dir
+
+issue here: what if the dir contains more than one foo.inc.<suffix> with
+varying suffixes?
+
+> getIncrementFiles :: RdiffContext -> String -> IO [(String, String)]
+> getIncrementFiles repo path = do
+>     files <- getDirectoryContents incdir
+>     return (incfiles files)
+>     where
+>         (increment, remainder) = rSplitPath path
+>         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
+>         incfiles files = foldl (++) [] $ map filterSplitSuffix files
+
+reduce a list of increment files to those relevant to a particular
+increment
+
+> isRelevantIncFile :: String -> (String, String) -> Bool
+> isRelevantIncFile inc (path, _) = inc `isSuffixOf` path
+
+> removeSuffix :: String -> String -> String
+> removeSuffix suffix a = take (length a - length suffix - 1) a
+
+> getRelevantIncrementFiles :: RdiffContext -> String -> IO [(String, String)]
+> getRelevantIncrementFiles repo path = do
+>     ifiles <- getIncrementFiles repo path
+>     return $ map (first $ removeSuffix inc) $ filter (isRelevantIncFile inc) ifiles
+>     where
+>         (inc, remainder) = rSplitPath path
+>         a1 a = take (length a - length inc -1) a
+
+now we need a function that takes getRelevantIncrementFiles as above, and extracts
+the one (there should only be one!) relevant file based on the path requested
+
+(perhaps refactor the above so the type we are dealing with ensures no dupes?)
+
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat repo path = do
 >     dates <- getDates repo
->     if increment `elem` (increments dates)
->         then do
+>     valid <- isValidIncrement repo path
+>     if valid then do
 >            files <- getDirectoryContents incdir
 >            return $ Left eNOSYS
 >         else return $ Left eNOENT
 >     where
->         (increment, remainder) = rSplitPath path
->         increments dates = map getRdiffBackupDate $ tail dates
 >         incdir = repo </> "rdiff-backup-data" </> "increments"
->         realpath = incdir </> remainder
->         incfiles files = foldl (++) [] $ map filterSplitSuffix files
 
 > stripSuffix :: String -> String -> Maybe (String, String)
 > stripSuffix suffix instring =
