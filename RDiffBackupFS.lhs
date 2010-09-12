@@ -263,13 +263,8 @@ fileModeToEntryType from System.Fuse (not exported)
 
 > fileNameToTuple :: FilePath -> IO (String, FileStat)
 > fileNameToTuple f = do
->     ctx <- getFuseContext
->     stat <- getSymbolicLinkStatus f
->     return $ case (fileMode stat) `intersectFileModes` fileTypeModes of
->         v | v == symbolicLinkMode -> (f, linkStat ctx)
->           | v == directoryMode    -> (f, dirStat ctx)
->           | v == regularFileMode  -> (f, buildStat ctx RegularFile $ fromIntegral $ (fileSize stat))
->         _   {- default -}         -> (f, fileStat ctx)
+>     fstat <- fileNameToFileStat f
+>     return (f, fstat)
 
 Other possibilities are socketMode, characterSpecialMode, blockSpecialMode, namedPipeMode.
 
