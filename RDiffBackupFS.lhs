@@ -244,7 +244,7 @@ Some helper functions for the Current and Increment sets.
 >     ctx <- getFuseContext
 >     stat <- getSymbolicLinkStatus path
 >     let mode = fileMode stat
->     return FileStat { statEntryType = unpick $ lookup (ft mode) posixToFuseFileType 
+>     return FileStat { statEntryType = (fromMaybe RegularFile) $ lookup (ft mode) posixToFuseFileType 
 >                     , statFileMode = mode
 >                     , statLinkCount = linkCount stat
 >                     , statFileOwner = fuseCtxUserID ctx
@@ -257,9 +257,6 @@ Some helper functions for the Current and Increment sets.
 >                     , statStatusChangeTime =  statusChangeTime stat
 >                     }
 >    where
->        unpick :: Maybe EntryType -> EntryType
->        unpick (Just x) = x
->        unpick _ = RegularFile
 >        ft mode = mode `intersectFileModes` fileTypeModes
 
 > fileNameToTuple :: FilePath -> IO (String, FileStat)
