@@ -342,7 +342,6 @@ split it up into <date> and foo/bar bits
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat rdiffCtx fpath = do
 >     dates <- getDates rdiffCtx
->     ctx <- getFuseContext
 >     if increment `elem` (increments dates)
 >         then do
 >            files <- getDirectoryContents incdir
