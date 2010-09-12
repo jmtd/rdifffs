@@ -288,7 +288,6 @@ current backup tree.
 
 > rdiffCurrentReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffCurrentReadDirectory repo dir = do catch (toTry repo dir) handler where
->     toTry :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])   
 >     toTry repo dir = do                                            
 >         l <- getDirectoryContents realdir
 >         ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
@@ -296,7 +295,6 @@ current backup tree.
 >         where
 >             remainder = joinPath $ tail $ splitDirectories dir
 >             realdir = repo </> remainder
->     handler :: IOError -> IO (Either Errno [(FilePath, FileStat)])
 >     handler e | isPermissionError e   = return $ Left eACCES
 >               | isDoesNotExistError e = return $ Left eNOENT
 >               | otherwise             = return $ Left eFAULT
