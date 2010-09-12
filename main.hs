@@ -1,6 +1,6 @@
 module Main where
 
-import RDiffBackupFS
+import RdiffBackup
 import System.Directory -- doesDirectoryExist, canonicalizePath, getDirectoryContents
 import System.Environment -- getArgs, withArgs
 import System.Fuse

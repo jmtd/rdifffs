@@ -1,4 +1,4 @@
-> module RDiffBackupFS (verifyArgs, ensureRdiffBackupDir, rdiffFSOps) where
+> module RdiffBackup (verifyArgs, ensureRdiffBackupDir, rdiffFSOps) where
 > import qualified Data.ByteString.Char8 as B
 > import Foreign.C.Error
 > import System.Posix.Types
