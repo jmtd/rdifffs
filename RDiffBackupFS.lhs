@@ -74,20 +74,20 @@ The main method is so short I feel it's best to get it out of the way here.
 > 
 > -- TODO: better name
 > getDates :: RdiffContext -> IO [RdiffBackup]
-> getDates rdiffCtx = do
->     l <- getDirectoryContents $ rdiffCtx </> "rdiff-backup-data"
+> getDates repo = do
+>     l <- getDirectoryContents $ repo </> "rdiff-backup-data"
 >     return $ (getCurrentMirror l) : (getIncrements l)
 > 
 > type HT = ()
 > 
 > rdiffFSOps :: RdiffContext -> FuseOperations HT
-> rdiffFSOps rdiffCtx = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat rdiffCtx
->                             , fuseOpen        = rdiffOpen rdiffCtx
->                             , fuseRead        = rdiffRead rdiffCtx
->                             , fuseOpenDirectory = rdiffOpenDirectory rdiffCtx
->                             , fuseReadDirectory = rdiffReadDirectory rdiffCtx
+> rdiffFSOps repo = defaultFuseOps { fuseGetFileStat = rdiffGetFileStat repo
+>                             , fuseOpen        = rdiffOpen repo
+>                             , fuseRead        = rdiffRead repo
+>                             , fuseOpenDirectory = rdiffOpenDirectory repo
+>                             , fuseReadDirectory = rdiffReadDirectory repo
 >                             , fuseGetFileSystemStats = rdiffGetFileSystemStats
->                             , fuseReadSymbolicLink = rdiffReadSymbolicLink rdiffCtx
+>                             , fuseReadSymbolicLink = rdiffReadSymbolicLink repo
 >                             }
 
 > buildStat ctx entrytype fsize = FileStat { statEntryType = entrytype
@@ -120,8 +120,8 @@ function (either rdiffCurrent* or rdiffIncrement*) to handle such requests.
 
 > data WhichBackupType = CurrentBackup | IncrementBackup | Neither deriving(Eq)
 > whichBackup :: RdiffContext -> String -> IO WhichBackupType
-> whichBackup rdiffCtx fpath = do
->     dates <- getDates rdiffCtx
+> whichBackup repo fpath = do
+>     dates <- getDates repo
 >     if (Current prefix) `elem` dates
 >         then return CurrentBackup
 >         else if (Increment prefix) `elem` dates
@@ -141,49 +141,49 @@ directory and the /current symlink within.
 > rdiffGetFileStat _ "/current" = do
 >     ctx <- getFuseContext
 >     return $ Right $ linkStat ctx
-> rdiffGetFileStat rdiffCtx fpath = do
->     which <- whichBackup rdiffCtx fpath
+> rdiffGetFileStat repo fpath = do
+>     which <- whichBackup repo fpath
 >     case which of
->         CurrentBackup   -> rdiffGetCurrentFileStat rdiffCtx fpath
->         IncrementBackup -> rdiffIncrementGetFileStat rdiffCtx fpath
+>         CurrentBackup   -> rdiffGetCurrentFileStat repo fpath
+>         IncrementBackup -> rdiffIncrementGetFileStat repo fpath
 >         Neither         -> return $ Left eNOENT
 
 > rdiffOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffOpenDirectory _ "/" = return eOK
-> rdiffOpenDirectory rdiffCtx fdir = do
->     which <- whichBackup rdiffCtx fdir
+> rdiffOpenDirectory repo fdir = do
+>     which <- whichBackup repo fdir
 >     case which of
->         CurrentBackup   -> rdiffCurrentOpenDirectory rdiffCtx fdir
->         IncrementBackup -> rdiffIncrementOpenDirectory rdiffCtx fdir
+>         CurrentBackup   -> rdiffCurrentOpenDirectory repo fdir
+>         IncrementBackup -> rdiffIncrementOpenDirectory repo fdir
 >         Neither         -> return eNOENT
 
 > rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
-> rdiffReadDirectory rdiffCtx "/" = do
+> rdiffReadDirectory repo "/" = do
 >     ctx <- getFuseContext
->     dates <- getDates rdiffCtx
+>     dates <- getDates repo
 >     return $ Right $ (dirs ctx (map getRdiffBackupDate dates)) ++ ([("current", linkStat ctx)])
 >     where dirs ctx xs = map (\x -> (x, dirStat ctx)) ([".", ".."] ++ xs)
-> rdiffReadDirectory rdiffCtx fdir = do
->     which <- whichBackup rdiffCtx fdir
+> rdiffReadDirectory repo fdir = do
+>     which <- whichBackup repo fdir
 >     case which of
->         CurrentBackup   -> rdiffCurrentReadDirectory rdiffCtx fdir
->         IncrementBackup -> rdiffIncrementReadDirectory rdiffCtx fdir
+>         CurrentBackup   -> rdiffCurrentReadDirectory repo fdir
+>         IncrementBackup -> rdiffIncrementReadDirectory repo fdir
 >         Neither         -> return $ Left eNOENT
 
 > rdiffOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffOpen rdiffCtx path mode flags = do
->     which <- whichBackup rdiffCtx path
+> rdiffOpen repo path mode flags = do
+>     which <- whichBackup repo path
 >     case which of
->         CurrentBackup   -> rdiffCurrentOpen rdiffCtx path mode flags
->         IncrementBackup -> rdiffIncrementOpen rdiffCtx path mode flags
+>         CurrentBackup   -> rdiffCurrentOpen repo path mode flags
+>         IncrementBackup -> rdiffIncrementOpen repo path mode flags
 >         Neither         -> return $ Left eNOENT
 
 > rdiffRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffRead rdiffCtx path ht byteCount offset = do
->     which <- whichBackup rdiffCtx path
+> rdiffRead repo path ht byteCount offset = do
+>     which <- whichBackup repo path
 >     case which of
->         CurrentBackup   -> rdiffCurrentRead   rdiffCtx path ht byteCount offset
->         IncrementBackup -> rdiffIncrementRead rdiffCtx path ht byteCount offset
+>         CurrentBackup   -> rdiffCurrentRead   repo path ht byteCount offset
+>         IncrementBackup -> rdiffIncrementRead repo path ht byteCount offset
 >         Neither         -> return $ Left eNOENT
 
 > rdiffGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
@@ -204,14 +204,14 @@ the list. This is true for the current implementation, but it would be nice
 to enforce this.
 
 > rdiffReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
-> rdiffReadSymbolicLink rdiffCtx "/current" = do
->     dates <- getDates rdiffCtx
+> rdiffReadSymbolicLink repo "/current" = do
+>     dates <- getDates repo
 >     return $ Right $ getRdiffBackupDate $ head dates
-> rdiffReadSymbolicLink rdiffCtx fpath = do
->     which <- whichBackup rdiffCtx fpath
+> rdiffReadSymbolicLink repo fpath = do
+>     which <- whichBackup repo fpath
 >     case which of
->         CurrentBackup    -> rdiffCurrentReadSymbolicLink rdiffCtx fpath
->         IncrementBackup  -> rdiffIncrementReadSymbolicLink rdiffCtx fpath
+>         CurrentBackup    -> rdiffCurrentReadSymbolicLink repo fpath
+>         IncrementBackup  -> rdiffIncrementReadSymbolicLink repo fpath
 >         Neither          -> return $ Left eNOSYS
 
 > ----------------------------------------------------------------------------
@@ -267,28 +267,28 @@ Now for the Current-functions. These handle IO requests for stuff under the
 current backup tree.
 
 > rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffGetCurrentFileStat rdiffCtx fpath = do
+> rdiffGetCurrentFileStat repo fpath = do
 >     fstat <- fileNameToFileStat realPath
 >     return $ Right $ fstat
 >     where
 >         (_:path) = fpath
->         realPath = joinPath $ rdiffCtx:(tail $ splitDirectories path)
+>         realPath = joinPath $ repo:(tail $ splitDirectories path)
 
 > rdiffCurrentReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
-> rdiffCurrentReadSymbolicLink rdiffCtx fpath = do
->     target <- readSymbolicLink $ rdiffCtx </> remainder
+> rdiffCurrentReadSymbolicLink repo fpath = do
+>     target <- readSymbolicLink $ repo </> remainder
 >     return $ Right $ target
 >     where
 >         (_:path) = fpath
 >         remainder = joinPath $ tail $ splitDirectories path
 
-> rdiffCurrentReadDirectory rdiffCtx fdir = do
+> rdiffCurrentReadDirectory repo fdir = do
 >     l <- getDirectoryContents realdir
 >     ret <- mapM (fileNameToTuple . (realdir </>)) $ filter (/= "rdiff-backup-data") l
 >     return $ Right $ map (\(s,f) -> (takeFileName s, f)) ret
 >     where (_:dir) = fdir
 >           remainder = joinPath $ tail $ splitDirectories dir
->           realdir = rdiffCtx </> remainder
+>           realdir = repo </> remainder
 
 This is a really ugly function. We need to call readdir(2) on the underlying
 directory and try to pass any error on up to our readdir(2) response. Hence
@@ -297,8 +297,8 @@ be to just getDirectoryContents, which is in System.Directory and returns some
 fairly useful exception types.
 
 > rdiffCurrentOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffCurrentOpenDirectory rdiffCtx fpath = do
->     catch (toTry $ rdiffCtx </> remainder) handler
+> rdiffCurrentOpenDirectory repo fpath = do
+>     catch (toTry $ repo </> remainder) handler
 >     where (_:path) = fpath
 >           remainder = joinPath $ tail $ splitDirectories path
 >           toTry :: FilePath -> IO Errno
@@ -310,7 +310,7 @@ fairly useful exception types.
 >           handler e = return eACCES
 
 > rdiffCurrentOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffCurrentOpen rdiffCtx fpath mode flags =
+> rdiffCurrentOpen repo fpath mode flags =
 >     case mode of
 >         ReadOnly -> do             -- Read Write Execute
 >             ok <- fileAccess realpath True False False
@@ -320,15 +320,15 @@ fairly useful exception types.
 >         _        ->  return $ Left eACCES
 >     where (_:path) = fpath
 >           remainder = joinPath $ tail $ splitDirectories path
->           realpath = rdiffCtx </> remainder
+>           realpath = repo </> remainder
 
 > rdiffCurrentRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffCurrentRead rdiffCtx fpath _ byteCount offset = do
+> rdiffCurrentRead repo fpath _ byteCount offset = do
 >     stuff <- readFile realpath
 >     return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) $ B.pack stuff
 >     where (_:path) = fpath
 >           remainder = joinPath $ tail $ splitDirectories path
->           realpath = rdiffCtx </> remainder
+>           realpath = repo </> remainder
 
 Stub increment functions (for now)
 
@@ -340,8 +340,8 @@ split it up into <date> and foo/bar bits
 >    split = splitDirectories path
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffIncrementGetFileStat rdiffCtx fpath = do
->     dates <- getDates rdiffCtx
+> rdiffIncrementGetFileStat repo fpath = do
+>     dates <- getDates repo
 >     if increment `elem` (increments dates)
 >         then do
 >            files <- getDirectoryContents incdir
@@ -351,7 +351,7 @@ split it up into <date> and foo/bar bits
 >         (_:path) = fpath
 >         (increment, remainder) = rSplitPath path
 >         increments dates = map getRdiffBackupDate $ tail dates
->         incdir = rdiffCtx </> "rdiff-backup-data" </> "increments"
+>         incdir = repo </> "rdiff-backup-data" </> "increments"
 >         realpath = incdir </> remainder
 >         incfiles files = foldl (++) [] $ map filterSplitSuffix files
 
@@ -367,7 +367,7 @@ the input 'x' with the suffix stripped out.
 > filterSplitSuffix x = mapMaybe (\y -> y x) $ map stripSuffix incrementSuffixes
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffIncrementOpenDirectory rdiffCtx fdir
+> rdiffIncrementOpenDirectory repo fdir
 >     | dir == prefix = return eOK
 >     | otherwise     = return eNOSYS
 >     where (_:dir) = fdir
@@ -416,10 +416,10 @@ This function does all the IO to obtain file lists, then passes the results to
 incrementReadDirectory which is a pure function.
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
-> rdiffIncrementReadSymbolicLink rdiffCtx fpath = return $ Left eNOSYS
+> rdiffIncrementReadSymbolicLink repo fpath = return $ Left eNOSYS
 
 > rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffIncrementOpen rdiffCtx path mode flags = return $ Left eNOENT
+> rdiffIncrementOpen repo path mode flags = return $ Left eNOENT
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffIncrementRead rdiffCtx path _ byteCount offset = return $ Left eNOSYS
+> rdiffIncrementRead repo path _ byteCount offset = return $ Left eNOSYS
