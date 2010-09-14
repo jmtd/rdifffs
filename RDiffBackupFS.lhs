@@ -146,7 +146,7 @@ directory and the /current symlink within.
 > rdiffGetFileStat repo fpath = do
 >     which <- whichBackup repo path
 >     case which of
->         CurrentBackup   -> rdiffGetCurrentFileStat repo path
+>         CurrentBackup   -> rdiffCurrentGetFileStat repo path
 >         IncrementBackup -> rdiffIncrementGetFileStat repo path
 >         Neither         -> return $ Left eNOENT
 >     where
@@ -273,8 +273,8 @@ Other possibilities are socketMode, characterSpecialMode, blockSpecialMode, name
 Now for the Current-functions. These handle IO requests for stuff under the
 current backup tree.
 
-> rdiffGetCurrentFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffGetCurrentFileStat repo path = do
+> rdiffCurrentGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
+> rdiffCurrentGetFileStat repo path = do
 >     fstat <- fileNameToFileStat realPath
 >     return $ Right $ fstat
 >     where
@@ -367,7 +367,7 @@ varying suffixes?
 >         else do
 >         files <- getDirectoryContents incdir
 >         case incFstat file increment files of
->             Nothing -> rdiffGetCurrentFileStat repo path
+>             Nothing -> rdiffCurrentGetFileStat repo path
 >             Just (Left x) -> return $ Left x
 >             Just (Right x) -> fileNameToFileStat x >>= return . Right
 >     where
