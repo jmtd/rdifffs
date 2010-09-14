@@ -35,7 +35,7 @@ incFstat file inc files = case length relevant of
         _ -> Left False -- error
     where
         relevant = filter (isRelevantFile file inc) files
-        
+         
 curFstat file _ _ = Right (file ++ " (current)")-- placeholder
 
 interpretIncFile :: String -> String -> String -> Either Bool String

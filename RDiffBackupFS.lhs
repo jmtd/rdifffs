@@ -359,58 +359,44 @@ get me all the increment files in the increment dir
 issue here: what if the dir contains more than one foo.inc.<suffix> with
 varying suffixes?
 
-> getIncrementFiles :: RdiffContext -> String -> IO [(String, String)]
-> getIncrementFiles repo path = do
->     files <- getDirectoryContents incdir
->     return (incfiles files)
->     where
->         (increment, remainder) = rSplitPath path
->         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
->         incfiles files = foldl (++) [] $ map filterSplitSuffix files
-
-reduce a list of increment files to those relevant to a particular
-increment
-
-> isRelevantIncFile :: String -> (String, String) -> Bool
-> isRelevantIncFile inc (path, _) = inc `isSuffixOf` path
-
-> removeSuffix :: String -> String -> String
-> removeSuffix suffix a = take (length a - length suffix - 1) a
-
-> getRelevantIncrementFiles :: RdiffContext -> String -> IO [(String, String)]
-> getRelevantIncrementFiles repo path = do
->     ifiles <- getIncrementFiles repo path
->     return $ map (first $ removeSuffix inc) $ filter (isRelevantIncFile inc) ifiles
->     where
->         (inc, remainder) = rSplitPath path
->         a1 a = take (length a - length inc -1) a
-
-now we need a function that takes getRelevantIncrementFiles as above, and extracts
-the one (there should only be one!) relevant file based on the path requested
-
-(perhaps refactor the above so the type we are dealing with ensures no dupes?)
-
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat repo path = do
 >     dates <- getDates repo
 >     valid <- isValidIncrement repo path
->     if valid then do
->            files <- getDirectoryContents incdir
->            return $ Left eNOSYS
->         else return $ Left eNOENT
+>     if not valid then return $ Left eNOENT
+>         else do
+>         files <- getDirectoryContents incdir
+>         case incFstat file increment files of
+>             Nothing -> rdiffGetCurrentFileStat repo path
+>             Just (Left x) -> return $ Left x
+>             Just (Right x) -> fileNameToFileStat x >>= return . Right
 >     where
->         incdir = repo </> "rdiff-backup-data" </> "increments"
+>         (increment, remainder) = rSplitPath path
+>         incbase = repo </> "rdiff-backup-data" </> "increments"
+>         incdir  = incbase </> (takeDirectory remainder)
+>         file    = head $ replace [""] ["."] [takeFileName remainder]
 
-> stripSuffix :: String -> String -> Maybe (String, String)
-> stripSuffix suffix instring =
->   if suffix `isSuffixOf` instring
->      then Just $ (take (length instring - length suffix) instring, suffix)
->      else Nothing
+> isRelevantFile :: String -> String -> String -> Bool
+> isRelevantFile f inc fs = prefixOK && suffixOK where
+>     suffix = drop (length f + length inc + 1) fs
+>     prefixOK = (f ++ '.':inc) `isPrefixOf` fs
+>     suffixOK = suffix `elem` incrementSuffixes
 
-filterSplitSuffix takes a filename and returns either [] or [(f,suffix)] where f is
-the input 'x' with the suffix stripped out.
+Maybe might be overkill, below...
 
-> filterSplitSuffix x = mapMaybe (\y -> y x) $ map stripSuffix incrementSuffixes
+> incFstat :: String -> String -> [String] -> Maybe (Either Errno String)
+> incFstat file inc files = case length relevant of
+>         1 -> Just $ interpretIncFile file inc (head relevant)
+>         0 -> Nothing
+>         _ -> Just $ Left eNOSYS -- error FIXME what kind?
+>     where
+>         relevant = filter (isRelevantFile file inc) files
+        
+> interpretIncFile :: String -> String -> String -> Either Errno String
+> interpretIncFile file inc incfile
+>     | suffix == ".missing" = Left eNOENT
+>     | otherwise = Right file
+>     where suffix = drop (length file + length inc + 1) incfile
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory repo dir
