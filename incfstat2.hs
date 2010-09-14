@@ -1,3 +1,4 @@
+
 {-
 
  incfstat2.hs - *another* attempt to implement the incrementFileStat,
@@ -21,16 +22,11 @@ files = [ "a.2010-02-04T18:18:15Z.diff.gz"
 file = "b"
 inc = "2010-02-04T18:18:18Z"
 
--- find files which are relevant
 isRelevantFile :: String -> String -> String -> Bool
-isRelevantFile a inc b = (a ++ '.':inc) `isPrefixOf` b
-relevantFiles file inc = filter (isRelevantFile file inc)
-
--- narrow down to relevant suffixes
-isRelevantFile2 :: String -> String -> String -> Bool
-isRelevantFile2 a inc b = suffix `elem` incrementSuffixes
-    where suffix = drop (length a + length inc + 1) b
-relevantFiles2 file inc = filter (isRelevantFile2 file inc)
+isRelevantFile f inc fs = prefixOK && suffixOK where
+    suffix = drop (length f + length inc + 1) fs
+    prefixOK = (f ++ '.':inc) `isPrefixOf` fs
+    suffixOK = suffix `elem` incrementSuffixes
 
 incFstat :: String -> String -> [String] -> Either Bool String
 incFstat file inc files = case length relevant of
@@ -38,9 +34,8 @@ incFstat file inc files = case length relevant of
         0 -> curFstat file inc files -- no increment file
         _ -> Left False -- error
     where
-        relevant = relevantFiles2 file inc relevant2
-        relevant2 = relevantFiles file inc files
-
+        relevant = filter (isRelevantFile file inc) files
+        
 curFstat file _ _ = Right (file ++ " (current)")-- placeholder
 
 interpretIncFile :: String -> String -> String -> Either Bool String
