@@ -380,6 +380,15 @@ algorithm in an 'inner' pure function.
 
 The inner pure function:
 
+Given a virtual filename, an increment timestamp, and a list of increment
+files, return either Nothing (no appropriate increment file), Just Right
+increment file (one appropriate increment file), or Just Left eNOSYS,
+signifying more than one supposedly-appropriate increment file, which
+should never happen with a valid repository.
+
+It would be nicer if incFstat didn't call interpretIncFile, it could
+then be a bit more reusable.
+
 > incFstat :: String -> String -> [String] -> Maybe (Either Errno String)
 > incFstat file inc files = case length relevant of
 >         1 -> Just $ interpretIncFile file inc (head relevant)
@@ -441,6 +450,9 @@ TODO: we need to handle a failure from getDirectoryContents (exception?)
 
 returns sublist of strings which have the provided suffix,
 with the suffix removed
+
+I think this would be nicer operating purely on Strings, and being
+applied with first/fst etc. by the caller.
 
 > getBySuffix :: String -> [Fpair] -> [Fpair]
 > getBySuffix _ [] = []
