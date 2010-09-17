@@ -29,7 +29,7 @@ The main method is so short I feel it's best to get it out of the way here.
 >     withArgs (tail args) $ fuseMain (rdiffFSOps path) defaultExceptionHandler
 
 > usage :: String
-> usage = "archfs3 <rdiff-backup directory> <mountpoint>"
+> usage = "rdifffs <rdiff-backup directory> <mountpoint>"
 > 
 > type RdiffContext = String
 > 
