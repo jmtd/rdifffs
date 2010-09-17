@@ -232,19 +232,6 @@ to enforce this.
 
 Some helper functions for the Current and Increment sets.
 
-fileModeToEntryType from System.Fuse (not exported)
-
-> fileModeToEntryType :: FileMode -> EntryType
-> fileModeToEntryType mode
->     | fileType == namedPipeMode        = NamedPipe
->     | fileType == characterSpecialMode = CharacterSpecial
->     | fileType == directoryMode        = Directory
->     | fileType == blockSpecialMode     = BlockSpecial
->     | fileType == regularFileMode      = RegularFile
->     | fileType == symbolicLinkMode     = SymbolicLink
->     | fileType == socketMode           = Socket
->     where fileType = mode .&. (61440)
-
 > fileNameToFileStat :: FilePath -> IO FileStat
 > fileNameToFileStat path = do
 >     ctx <- getFuseContext
