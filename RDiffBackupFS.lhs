@@ -356,7 +356,7 @@ varying suffixes?
 >         case incFstat file increment files of
 >             Nothing -> rdiffCurrentGetFileStat repo path
 >             Just (Left x) -> return $ Left x
->             Just (Right x) -> fileNameToFileStat x >>= return . Right
+>             Just (Right x) -> fileNameToFileStat ( incdir </> x) >>= return . Right
 >     where
 >         (increment, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
@@ -382,7 +382,7 @@ Maybe might be overkill, below...
 > interpretIncFile :: String -> String -> String -> Either Errno String
 > interpretIncFile file inc incfile
 >     | suffix == ".missing" = Left eNOENT
->     | otherwise = Right file
+>     | otherwise = Right incfile
 >     where suffix = drop (length file + length inc + 1) incfile
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
