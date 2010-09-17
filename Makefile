@@ -1,7 +1,7 @@
-all: RDiffBackupFS
+all: rdifffs
 
-RDiffBackupFS: RDiffBackupFS.lhs
-	ghc -threaded --make RDiffBackupFS.lhs
+rdifffs: rdifffs.lhs
+	ghc -threaded --make rdifffs.lhs
 
 clean:
 	rm -f rdifffs *.hi *.o
