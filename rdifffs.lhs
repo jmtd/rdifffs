@@ -365,13 +365,15 @@ algorithm in an 'inner' pure function.
 > rdiffIncrementGetFileStat repo path = do
 >     dates <- getDates repo
 >     valid <- isValidIncrement repo path
->     if not valid then return $ Left eNOENT
->         else do
+>     if not valid then return (Left eNOENT) else do
 >         files <- getDirectoryContents incdir
->         case incFstat file increment files of
+>         case maybeRelevantIncFile file increment files of
 >             Nothing -> rdiffCurrentGetFileStat repo path
->             Just (Left x) -> return $ Left x
->             Just (Right x) -> fileNameToFileStat ( incdir </> x) >>= return . Right
+>             Just (Left x) -> return (Left x)
+>             Just (Right x) -> case interpretIncFile file increment x of
+>                 Left x -> return (Left x)
+>                 Right x ->
+>                     fileNameToFileStat (incdir </> x) >>= (return . Right)
 >     where
 >         (increment, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
@@ -386,12 +388,9 @@ increment file (one appropriate increment file), or Just Left eNOSYS,
 signifying more than one supposedly-appropriate increment file, which
 should never happen with a valid repository.
 
-It would be nicer if incFstat didn't call interpretIncFile, it could
-then be a bit more reusable.
-
-> incFstat :: String -> String -> [String] -> Maybe (Either Errno String)
-> incFstat file inc files = case length relevant of
->         1 -> Just $ interpretIncFile file inc (head relevant)
+> maybeRelevantIncFile :: String -> String -> [String] -> Maybe (Either Errno String)
+> maybeRelevantIncFile file inc files = case length relevant of
+>         1 -> Just $ Right $ head relevant
 >         0 -> Nothing
 >         _ -> Just $ Left eNOSYS -- error FIXME what kind?
 >     where
