@@ -17,7 +17,6 @@
 > import Data.Maybe -- mapMaybe
 > import Foreign -- .&.
 > import Control.Arrow -- first
-> import RdiffFS
 
 The main method is so short I feel it's best to get it out of the way here.
 
@@ -163,7 +162,9 @@ directory and the /current symlink within.
 >     where
 >         (_:dir) = fdir
 
-> rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+> type Fpair = (FilePath, FileStat)
+
+> rdiffReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [Fpair])
 > rdiffReadDirectory repo "/" = do
 >     ctx <- getFuseContext
 >     dates <- getDates repo
@@ -284,7 +285,7 @@ These handle IO requests for stuff under the current backup tree.
 >     where
 >         remainder = joinPath $ tail $ splitDirectories path
 
-> rdiffCurrentReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+> rdiffCurrentReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [Fpair])
 > rdiffCurrentReadDirectory repo dir = do catch try handler where
 >     realdir = joinPath $ repo:(tail $ splitDirectories dir)
 >     try = do                                            
@@ -407,15 +408,16 @@ Get the directory contents for the relevant increments directory and the
 corresponding FileStat information. Pass, along with the readDirectory output
 for the equivalent Current directory, to a pure inner function.
 
-> rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
+> rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [Fpair])
 > rdiffIncrementReadDirectory repo dir = do
 >     i <- getDirectoryContents incdir
 >     c <- rdiffCurrentReadDirectory repo $ "current" </> remainder
+>     ctx <- getFuseContext
 >     case c of
 >         Left e -> return (Left e)
 >         Right c' -> do
 >           i' <- mapM (\f -> do f' <- fstat f; return (f,f')) (i \\ [".", ".."])
->           (return . Right) $ incrementReadDirectory i' c' inc
+>           (return . Right) $ incrementReadDirectory ctx i' c' inc
 >     where inc = head $ splitDirectories dir
 >           remainder = joinPath $ tail $ splitDirectories dir
 >           incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
@@ -423,7 +425,30 @@ for the equivalent Current directory, to a pure inner function.
 
 TODO: we need to handle a failure from getDirectoryContents (exception?)
 
-TODO: merge in RdiffFS
+> defaultDir ctx = buildStat ctx Directory 1024
+
+> incrementReadDirectory :: FuseContext -> [Fpair] -> [Fpair] -> String -> [Fpair]
+> incrementReadDirectory ctx increDirectory curDirectory incr = nub' $
+>   (incfiles ++  dirfiles ++  difffiles ++  curDirectory) \\\ missfiles where
+>   nub' = nubBy pairCmp
+>   pairCmp (a,_) (b,_) = a == b
+>   (\\\) = deleteFirstsBy pairCmp -- specialised '\\'
+>   incfiles  = fetch ".snapshot.gz"
+>   missfiles = fetch ".missing"
+>   difffiles = fetch ".diff.gz"
+>   dirfiles  = map (second (\_->(defaultDir ctx))) (fetch ".dir")
+>   fetch s = getBySuffix ('.':incr) $ getBySuffix s increDirectory
+
+returns sublist of strings which have the provided suffix,
+with the suffix removed
+
+> getBySuffix :: String -> [Fpair] -> [Fpair]
+> getBySuffix _ [] = []
+> getBySuffix suffix fps = 
+>   map (first (trimSuffix suffix)) $ filter (isSuffixOf suffix . fst) fps
+>   where
+>       trimSuffix s f = take (length f - length s) f
+
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink repo path = return $ Left eNOSYS

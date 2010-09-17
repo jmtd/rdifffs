@@ -1,6 +1,6 @@
 all: RDiffBackupFS
 
-RDiffBackupFS: RDiffBackupFS.lhs RdiffFS.hs
+RDiffBackupFS: RDiffBackupFS.lhs
 	ghc -threaded --make RDiffBackupFS.lhs
 
 clean:
