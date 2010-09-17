@@ -410,8 +410,6 @@ An increment's file tree will look as follows (as far as I understand it)
       * .dir means the filename was a dir at this point
 
 > incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
-> isIncrementFile :: String -> Bool
-> isIncrementFile s = or $ map (\y -> y s) $ map isSuffixOf incrementSuffixes
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory repo dir = do
