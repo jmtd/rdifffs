@@ -416,7 +416,7 @@ An increment's file tree will look as follows (as far as I understand it)
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory repo dir = do
 >     i <- getDirectoryContents incdir
->     c <- rdiffCurrentReadDirectory repo $ pathSeparator: "current" </> remainder
+>     c <- rdiffCurrentReadDirectory repo $ "current" </> remainder
 >     case c of
 >         Left e -> return (Left e)
 >         Right c' -> do
