@@ -255,10 +255,20 @@ Some helper functions for the Current and Increment sets.
 >     fstat <- fileNameToFileStat f
 >     return (f, fstat)
 
-Other possibilities are socketMode, characterSpecialMode, blockSpecialMode, namedPipeMode.
+Most of these routines need to take a path /<date>/foo/bar and
+split it up into <date> and foo/bar bits. (TODO that the Current
+functions still do this themselves)
 
-Now for the Current-functions. These handle IO requests for stuff under the
-current backup tree.
+> rSplitPath :: FilePath -> (FilePath, FilePath)
+> rSplitPath path = (head split, joinPath $ tail split) where
+>    split = splitDirectories path
+
+
+
+----------------------------------------------------------------------------
+current functions
+
+These handle IO requests for stuff under the current backup tree.
 
 > rdiffCurrentGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffCurrentGetFileStat repo path = do
@@ -321,18 +331,10 @@ fairly useful exception types.
 >           remainder = joinPath $ tail $ splitDirectories path
 >           realpath = repo </> remainder
 
-Stub increment functions (for now)
+----------------------------------------------------------------------------
+increment helper functions
 
-Most of these routines need to take a path /<date>/foo/bar and
-split it up into <date> and foo/bar bits
-
-> rSplitPath :: FilePath -> (FilePath, FilePath)
-> rSplitPath path = (head split, joinPath $ tail split) where
->    split = splitDirectories path
-
-most of these increment functions will say "hey, I have been given a fuse-esque
-path, and I need to know what to do with it! first, split out the increment date
-from the file relative path; then perhaps validate the increment date;
+Ensure that the given path corresponds to a valid increment timestamp
 
 > isValidIncrement :: RdiffContext -> String -> IO Bool
 > isValidIncrement repo path = do
@@ -341,10 +343,22 @@ from the file relative path; then perhaps validate the increment date;
 >         (increment, remainder) = rSplitPath path
 >         increments = (map getRdiffBackupDate) . tail
 
-get me all the increment files in the increment dir
+> incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
 
-issue here: what if the dir contains more than one foo.inc.<suffix> with
-varying suffixes?
+Given a filename, an increment timestamp, and an increment file, is the
+increment file relevant to the filename?
+
+> isRelevantFile :: String -> String -> String -> Bool
+> isRelevantFile f inc fs = prefixOK && suffixOK where
+>     suffix = drop (length f + length inc + 1) fs
+>     prefixOK = (f ++ '.':inc) `isPrefixOf` fs
+>     suffixOK = suffix `elem` incrementSuffixes
+
+----------------------------------------------------------------------------
+increment functions
+
+Try to do the impure IO stuff in the main function, and encapsulate the core
+algorithm in an 'inner' pure function.
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat repo path = do
@@ -363,13 +377,7 @@ varying suffixes?
 >         incdir  = incbase </> (takeDirectory remainder)
 >         file    = head $ replace [""] ["."] [takeFileName remainder]
 
-> isRelevantFile :: String -> String -> String -> Bool
-> isRelevantFile f inc fs = prefixOK && suffixOK where
->     suffix = drop (length f + length inc + 1) fs
->     prefixOK = (f ++ '.':inc) `isPrefixOf` fs
->     suffixOK = suffix `elem` incrementSuffixes
-
-Maybe might be overkill, below...
+The inner pure function:
 
 > incFstat :: String -> String -> [String] -> Maybe (Either Errno String)
 > incFstat file inc files = case length relevant of
@@ -378,7 +386,11 @@ Maybe might be overkill, below...
 >         _ -> Just $ Left eNOSYS -- error FIXME what kind?
 >     where
 >         relevant = filter (isRelevantFile file inc) files
-        
+
+Given a filename, an increment timestamp, and an increment filename,
+return either an Errno (for e.g. no virtual file in this increment)
+or a increment filename (to derive stat information from)
+
 > interpretIncFile :: String -> String -> String -> Either Errno String
 > interpretIncFile file inc incfile
 >     | suffix == ".missing" = Left eNOENT
@@ -391,25 +403,9 @@ Maybe might be overkill, below...
 >     | otherwise     = return eNOSYS
 >     where prefix = head $ splitDirectories dir
 
-Read the contents of a directory underneath an increment. We need to look
-at files under <root>/rdiff-backup-data/increments/<path> matching
-*<increment>.<suffix>. The precise suffix influences the directory listing,
-e.g. ".missing" means the filename listed *before* <increment> is not present.
-
-An increment's file tree will look as follows (as far as I understand it)
-
-    * start with the list in <dest>/<path>, as per Current
-    * look for files matching
-      <dest>/rdiff-backup-data/increments/<path>.<datetime_regex>.<suffix>
-      where suffix is from the list incrementSuffixes, below
-    * we are interested in the matching part of datetime_regex for all dates
-      from most recent backwards to our increment time, in that order.
-    * looking at the suffix:
-      * .missing, then prune the file
-      * .snapshot.gz and .diff.gz affect contents of file
-      * .dir means the filename was a dir at this point
-
-> incrementSuffixes = [ ".missing", ".diff.gz", ".dir", ".snapshot.gz" ]
+Get the directory contents for the relevant increments directory and the
+corresponding FileStat information. Pass, along with the readDirectory output
+for the equivalent Current directory, to a pure inner function.
 
 > rdiffIncrementReadDirectory :: RdiffContext -> FilePath -> IO (Either Errno [(FilePath, FileStat)])
 > rdiffIncrementReadDirectory repo dir = do
@@ -427,8 +423,7 @@ An increment's file tree will look as follows (as far as I understand it)
 
 TODO: we need to handle a failure from getDirectoryContents (exception?)
 
-This function does all the IO to obtain file lists, then passes the results to
-incrementReadDirectory which is a pure function.
+TODO: merge in RdiffFS
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink repo path = return $ Left eNOSYS
