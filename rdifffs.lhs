@@ -463,21 +463,30 @@ applied with first/fst etc. by the caller.
 A large amount of the boiler plate at the start of this function is taken
 verbatim from rdiffIncrementGetFileStat.  Perhaps it can be abstracted?
 
-> rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
-> rdiffIncrementReadSymbolicLink repo path = do
+> type ReadSymbolicLinkRet = IO (Either Errno FilePath)
+> type ReadSymbolicLinkType = RdiffContext -> FilePath -> ReadSymbolicLinkRet
+
+> rdiffIncrementBoilerPlate :: RdiffContext -> FilePath -> ReadSymbolicLinkType -> ReadSymbolicLinkType -> ReadSymbolicLinkRet
+> rdiffIncrementBoilerPlate repo path currentCase incrementCase = do
 >     dates <- getDates repo
 >     valid <- isValidIncrement repo path
 >     if not valid then return (Left eNOENT) else do
 >         files <- getDirectoryContents incdir
 >         case maybeRelevantIncFile file increment files of
->             Nothing -> rdiffCurrentReadSymbolicLink repo path
+>             Nothing -> currentCase repo path
 >             Just (Left x) -> return (Left x)
->             Just (Right x) -> readSymbolicLink x >>= (return . Right)
+>             Just (Right x) -> incrementCase repo x
 >     where
 >         (increment, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
 >         file    = head $ replace [""] ["."] [takeFileName remainder]
+
+> rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
+> rdiffIncrementReadSymbolicLink repo path =
+>     rdiffIncrementBoilerPlate repo path rdiffCurrentReadSymbolicLink incFn
+>     where
+>         incFn _ x = readSymbolicLink x >>= (return . Right)
 
 > rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffIncrementOpen repo path mode flags = return $ Left eNOENT
