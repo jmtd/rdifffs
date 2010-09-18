@@ -2,8 +2,7 @@ module Main where
 
 import System.Environment -- getArgs
 import Codec.Compression.GZip
---import qualified Data.ByteString.Char8 as B -- one bit works, another doesn't
-import qualified Data.ByteString.Lazy as B -- vice versa
+import qualified Data.ByteString.Lazy as L
 
 main = do
     args <- getArgs
@@ -14,8 +13,8 @@ main = do
 fnargh args = do
     if ".gz" == suffix
       then do
-        stuff <- fmap decompress (B.readFile ifs)
-        putStrLn $ B.unpack $ B.take (read count) $ B.drop (read skip) $ stuff
+        stuff <- fmap decompress (L.readFile ifs)
+        L.putStrLn $ L.take (read count) $ L.drop (read skip) $ stuff
       else do
         stuff <- readFile ifs
         putStrLn $ take (read count) $ drop (read skip) stuff
