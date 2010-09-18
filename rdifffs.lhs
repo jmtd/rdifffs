@@ -355,6 +355,27 @@ increment file relevant to the filename?
 >     prefixOK = (f ++ '.':inc) `isPrefixOf` fs
 >     suffixOK = suffix `elem` incrementSuffixes
 
+Abstracted boilerplate function that ensures the increment exists etc.
+
+> rdiffIncrementBoilerPlate :: RdiffContext -> FilePath
+>    -> (RdiffContext -> FilePath -> IO (Either Errno a))
+>    -> (RdiffContext -> FilePath -> IO (Either Errno a))
+>    -> IO (Either Errno a)
+> rdiffIncrementBoilerPlate repo path currentCase incrementCase = do
+>     dates <- getDates repo
+>     valid <- isValidIncrement repo path
+>     if not valid then return (Left eNOENT) else do
+>         files <- getDirectoryContents incdir
+>         case maybeRelevantIncFile file increment files of
+>             Nothing -> currentCase repo path
+>             Just (Left x) -> return (Left x)
+>             Just (Right x) -> incrementCase repo x
+>     where
+>         (increment, remainder) = rSplitPath path
+>         incbase = repo </> "rdiff-backup-data" </> "increments"
+>         incdir  = incbase </> (takeDirectory remainder)
+>         file    = head $ replace [""] ["."] [takeFileName remainder]
+
 ----------------------------------------------------------------------------
 increment functions
 
@@ -362,19 +383,12 @@ Try to do the impure IO stuff in the main function, and encapsulate the core
 algorithm in an 'inner' pure function.
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
-> rdiffIncrementGetFileStat repo path = do
->     dates <- getDates repo
->     valid <- isValidIncrement repo path
->     if not valid then return (Left eNOENT) else do
->         files <- getDirectoryContents incdir
->         case maybeRelevantIncFile file increment files of
->             Nothing -> rdiffCurrentGetFileStat repo path
->             Just (Left x) -> return (Left x)
->             Just (Right x) -> case interpretIncFile file increment x of
->                 Left x -> return (Left x)
->                 Right x ->
->                     fileNameToFileStat (incdir </> x) >>= (return . Right)
+> rdiffIncrementGetFileStat repo path =
+>     rdiffIncrementBoilerPlate repo path rdiffCurrentGetFileStat incFn
 >     where
+>         incFn _ x = case interpretIncFile file increment x of
+>                         Left x -> return (Left x)
+>                         Right x -> fileNameToFileStat (incdir </> x) >>= (return . Right)
 >         (increment, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
@@ -459,28 +473,6 @@ applied with first/fst etc. by the caller.
 >   map (first (trimSuffix suffix)) $ filter (isSuffixOf suffix . fst) fps
 >   where
 >       trimSuffix s f = take (length f - length s) f
-
-A large amount of the boiler plate at the start of this function is taken
-verbatim from rdiffIncrementGetFileStat.  Perhaps it can be abstracted?
-
-> type ReadSymbolicLinkRet = IO (Either Errno FilePath)
-> type ReadSymbolicLinkType = RdiffContext -> FilePath -> ReadSymbolicLinkRet
-
-> rdiffIncrementBoilerPlate :: RdiffContext -> FilePath -> ReadSymbolicLinkType -> ReadSymbolicLinkType -> ReadSymbolicLinkRet
-> rdiffIncrementBoilerPlate repo path currentCase incrementCase = do
->     dates <- getDates repo
->     valid <- isValidIncrement repo path
->     if not valid then return (Left eNOENT) else do
->         files <- getDirectoryContents incdir
->         case maybeRelevantIncFile file increment files of
->             Nothing -> currentCase repo path
->             Just (Left x) -> return (Left x)
->             Just (Right x) -> incrementCase repo x
->     where
->         (increment, remainder) = rSplitPath path
->         incbase = repo </> "rdiff-backup-data" </> "increments"
->         incdir  = incbase </> (takeDirectory remainder)
->         file    = head $ replace [""] ["."] [takeFileName remainder]
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink repo path =
