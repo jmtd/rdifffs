@@ -311,18 +311,17 @@ fairly useful exception types.
 >         return eOK
 >     handler e = return eACCES
 
-> rdiffCurrentOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
-> rdiffCurrentOpen repo path mode flags =
->     case mode of
+> genericOpen mode path = case mode of
 >         ReadOnly -> do             -- Read Write Execute
->             ok <- fileAccess realpath True False False
+>             ok <- fileAccess path True False False
 >             if ok
 >                 then return $ Right ()
 >                 else return $ Left eACCES
 >         _        ->  return $ Left eACCES
->     where
->           remainder = joinPath $ tail $ splitDirectories path
->           realpath = repo </> remainder
+
+> rdiffCurrentOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
+> rdiffCurrentOpen repo path mode flags = genericOpen mode (repo </> remainder)
+>     where (increment, remainder) = rSplitPath path
 
 > rdiffCurrentRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 > rdiffCurrentRead repo path _ byteCount offset = do
@@ -497,15 +496,7 @@ applied with first/fst etc. by the caller.
 >         file = head $ replace [""] ["."] [takeFileName remainder]
 >         incFn _ _ = case interpretIncFile file inc path of
 >                         Left x -> return (Left x)
->                         Right x -> abstractMe (incdir </> x)
->         abstractMe f = do -- identical in rdiffCurrentOpen
->             case mode of
->                 ReadOnly -> do             -- Read Write Execute
->                     ok <- fileAccess f True False False
->                     if ok
->                         then return $ Right ()
->                         else return $ Left eACCES
->                 _        ->  return $ Left eACCES
+>                         Right x -> genericOpen mode (incdir </> x)
 >         curFn x y = rdiffCurrentOpen x y mode flags
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
