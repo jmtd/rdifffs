@@ -489,9 +489,10 @@ applied with first/fst etc. by the caller.
 
 > rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffIncrementOpen repo path mode flags = do
->     rdiffIncrementBoilerPlate repo path (\(x,y)-> rdiffCurrentOpen x y mode flags) incFn
+>     rdiffIncrementBoilerPlate repo path curFn incFn
 >     where
 >         incFn _ _ = do return (Left eNOENT)
+>         curFn x y = rdiffCurrentOpen x y mode flags
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 > rdiffIncrementRead repo path _ byteCount offset = return $ Left eNOSYS
