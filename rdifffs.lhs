@@ -421,10 +421,17 @@ or a increment filename (to derive stat information from)
 >     where suffix = drop (length file + length inc + 1) incfile
 
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffIncrementOpenDirectory repo dir
->     | dir == prefix = return eOK
->     | otherwise     = return eNOSYS
->     where prefix = head $ splitDirectories dir
+> rdiffIncrementOpenDirectory repo dir = 
+>     rdiffIncrementBoilerPlate repo dir curFn incFn >>= return . (either id id)
+>     where
+>         (inc, remainder) = rSplitPath dir
+>         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
+>         curFn a b = rdiffCurrentOpenDirectory a b >>= (return . Left)
+>         incFn _ _ = do catch try handler
+>         try = do
+>             openDirStream incdir >>= closeDirStream
+>             return (Left eOK)
+>         handler e = return (Left eACCES)
 
 Get the directory contents for the relevant increments directory and the
 corresponding FileStat information. Pass, along with the readDirectory output
