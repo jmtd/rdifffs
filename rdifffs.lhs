@@ -440,10 +440,10 @@ for the equivalent Current directory, to a pure inner function.
 >         Right c' -> do
 >           i' <- mapM (\f -> do f' <- fstat f; return (f,f')) (i \\ [".", ".."])
 >           (return . Right) $ incrementReadDirectory ctx i' c' inc
->     where inc = head $ splitDirectories dir
->           remainder = joinPath $ tail $ splitDirectories dir
->           incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
->           fstat f = fileNameToFileStat (incdir </> f)
+>     where
+>         (inc, remainder) = rSplitPath dir
+>         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
+>         fstat f = fileNameToFileStat (incdir </> f)
 
 TODO: we need to handle a failure from getDirectoryContents (exception?)
 
