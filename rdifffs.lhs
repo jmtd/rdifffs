@@ -493,8 +493,8 @@ applied with first/fst etc. by the caller.
 >     where
 >         (inc, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
->         incfile = incbase </> remainder
->         incdir  = takeDirectory incfile
+>         incdir  = incbase </> (takeDirectory remainder)
+>         file = head $ replace [""] ["."] [takeFileName remainder]
 >         incFn _ _ = case interpretIncFile file inc path of
 >                         Left x -> return (Left x)
 >                         Right x -> abstractMe (incdir </> x)
@@ -506,7 +506,6 @@ applied with first/fst etc. by the caller.
 >                         then return $ Right ()
 >                         else return $ Left eACCES
 >                 _        ->  return $ Left eACCES
->         file = head $ replace [""] ["."] [takeFileName remainder]
 >         curFn x y = rdiffCurrentOpen x y mode flags
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
