@@ -494,9 +494,9 @@ applied with first/fst etc. by the caller.
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
 >         file = head $ replace [""] ["."] [takeFileName remainder]
->         incFn _ = case interpretIncFile file inc path of
+>         incFn incfile = case interpretIncFile file inc path of
 >                       Left x -> return (Left x)
->                       Right x -> genericOpen mode (incdir </> x)
+>                       Right x -> genericOpen mode (incdir </> incfile)
 >         curFn = rdiffCurrentOpen repo path mode flags
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset
