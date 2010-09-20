@@ -499,5 +499,19 @@ applied with first/fst etc. by the caller.
 >                         Right x -> genericOpen mode (incdir </> x)
 >         curFn x y = rdiffCurrentOpen x y mode flags
 
-> rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
-> rdiffIncrementRead repo path _ byteCount offset = return $ Left eNOSYS
+> rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset
+>     -> IO (Either Errno B.ByteString)
+> rdiffIncrementRead repo path ht byteCount offset = do
+>     rdiffIncrementBoilerPlate repo path curFn incFn
+>     where
+>         (inc, remainder) = rSplitPath path
+>         incbase = repo </> "rdiff-backup-data" </> "increments"
+>         incdir  = incbase </> (takeDirectory remainder)
+>         file = head $ replace [""] ["."] [takeFileName remainder]
+>         incFn _ _ = case interpretIncFile file inc path of
+>                         Left x -> return (Left x)
+>                         Right x -> do -- FIXME: doesn't handle suffixes properly
+>                             stuff <- readFile (incdir </> x)
+>                             return $ Right $ B.take (fromIntegral byteCount)
+>                                            $ B.drop (fromIntegral offset) $ B.pack stuff
+>         curFn _ _ = rdiffCurrentRead repo path ht byteCount offset
