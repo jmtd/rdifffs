@@ -17,6 +17,8 @@
 > import Data.Maybe -- mapMaybe
 > import Foreign -- .&.
 > import Control.Arrow -- first
+> import Codec.Compression.GZip
+> import qualified Data.ByteString.Lazy as L
 
 The main method is so short I feel it's best to get it out of the way here.
 
@@ -508,10 +510,15 @@ applied with first/fst etc. by the caller.
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
 >         file = head $ replace [""] ["."] [takeFileName remainder]
->         incFn _ = case interpretIncFile file inc path of
->                       Left x -> return (Left x)
->                       Right x -> do -- FIXME: doesn't handle suffixes properly
->                           stuff <- readFile (incdir </> x)
->                           return $ Right $ B.take (fromIntegral byteCount)
->                                          $ B.drop (fromIntegral offset) $ B.pack stuff
+>         incFn incfile = case suffix incfile of
+>             ".snapshot.gz" -> do -- this is, probably, horrid.
+>                 stuff <- fmap decompress $ L.readFile (incdir </> incfile)
+>                 return $ Right $ B.take (fromIntegral byteCount)
+>                        $ B.drop (fromIntegral offset) $ B.concat $ L.toChunks stuff
+
+>             ".diff.gz" -> return (Left eNOSYS)
+>             ".missing" -> return (Left eNOENT)
+>             ".dir"     -> return (Left eISDIR)
+>             _          -> return (Left eINVAL)
+>         suffix incfile = drop (length file + length inc + 1) incfile
 >         curFn = rdiffCurrentRead repo path ht byteCount offset
