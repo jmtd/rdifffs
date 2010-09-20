@@ -513,8 +513,8 @@ applied with first/fst etc. by the caller.
 >         incFn incfile = case suffix incfile of
 >             ".snapshot.gz" -> do -- this is, probably, horrid.
 >                 stuff <- fmap decompress $ L.readFile (incdir </> incfile)
->                 return $ Right $ B.take (fromIntegral byteCount)
->                        $ B.drop (fromIntegral offset) $ B.concat $ L.toChunks stuff
+>                 return $ Right $ B.concat $ L.toChunks $ L.take (fromIntegral byteCount)
+>                        $ L.drop (fromIntegral offset) $ stuff
 
 >             ".diff.gz" -> return (Left eNOSYS)
 >             ".missing" -> return (Left eNOENT)
