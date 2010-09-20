@@ -357,7 +357,7 @@ increment file relevant to the filename?
 Abstracted boilerplate function that ensures the increment exists etc.
 
 > rdiffIncrementBoilerPlate :: RdiffContext -> FilePath
->    -> (RdiffContext -> FilePath -> IO (Either Errno a))
+>    -> IO (Either Errno a)
 >    -> (FilePath -> IO (Either Errno a))
 >    -> IO (Either Errno a)
 > rdiffIncrementBoilerPlate repo path currentCase incrementCase = do
@@ -366,7 +366,7 @@ Abstracted boilerplate function that ensures the increment exists etc.
 >     if not valid then return (Left eNOENT) else do
 >         files <- getDirectoryContents incdir
 >         case maybeRelevantIncFile file increment files of
->             Nothing -> currentCase repo path
+>             Nothing -> currentCase
 >             Just (Left x) -> return (Left x)
 >             Just (Right x) -> incrementCase x
 >     where
@@ -383,7 +383,7 @@ algorithm in an 'inner' pure function.
 
 > rdiffIncrementGetFileStat :: RdiffContext -> FilePath -> IO (Either Errno FileStat)
 > rdiffIncrementGetFileStat repo path =
->     rdiffIncrementBoilerPlate repo path rdiffCurrentGetFileStat incFn
+>     rdiffIncrementBoilerPlate repo path (rdiffCurrentGetFileStat repo path) incFn
 >     where
 >         incFn x = case interpretIncFile file increment x of
 >                        Left x -> return (Left x)
@@ -425,7 +425,7 @@ or a increment filename (to derive stat information from)
 >     where
 >         (inc, remainder) = rSplitPath dir
 >         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
->         curFn a b = rdiffCurrentOpenDirectory a b >>= (return . Left)
+>         curFn = rdiffCurrentOpenDirectory repo dir >>= (return . Left)
 >         incFn _ = do catch try handler
 >         try = do
 >             openDirStream incdir >>= closeDirStream
@@ -482,7 +482,7 @@ applied with first/fst etc. by the caller.
 
 > rdiffIncrementReadSymbolicLink :: RdiffContext -> FilePath -> IO (Either Errno FilePath)
 > rdiffIncrementReadSymbolicLink repo path =
->     rdiffIncrementBoilerPlate repo path rdiffCurrentReadSymbolicLink incFn
+>     rdiffIncrementBoilerPlate repo path (rdiffCurrentReadSymbolicLink repo path) incFn
 >     where
 >         incFn x = readSymbolicLink x >>= (return . Right)
 
@@ -497,7 +497,7 @@ applied with first/fst etc. by the caller.
 >         incFn _ = case interpretIncFile file inc path of
 >                       Left x -> return (Left x)
 >                       Right x -> genericOpen mode (incdir </> x)
->         curFn x y = rdiffCurrentOpen x y mode flags
+>         curFn = rdiffCurrentOpen repo path mode flags
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset
 >     -> IO (Either Errno B.ByteString)
@@ -514,4 +514,4 @@ applied with first/fst etc. by the caller.
 >                           stuff <- readFile (incdir </> x)
 >                           return $ Right $ B.take (fromIntegral byteCount)
 >                                          $ B.drop (fromIntegral offset) $ B.pack stuff
->         curFn _ _ = rdiffCurrentRead repo path ht byteCount offset
+>         curFn = rdiffCurrentRead repo path ht byteCount offset
