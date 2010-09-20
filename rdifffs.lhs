@@ -358,7 +358,7 @@ Abstracted boilerplate function that ensures the increment exists etc.
 
 > rdiffIncrementBoilerPlate :: RdiffContext -> FilePath
 >    -> (RdiffContext -> FilePath -> IO (Either Errno a))
->    -> (RdiffContext -> FilePath -> IO (Either Errno a))
+>    -> (FilePath -> IO (Either Errno a))
 >    -> IO (Either Errno a)
 > rdiffIncrementBoilerPlate repo path currentCase incrementCase = do
 >     dates <- getDates repo
@@ -368,7 +368,7 @@ Abstracted boilerplate function that ensures the increment exists etc.
 >         case maybeRelevantIncFile file increment files of
 >             Nothing -> currentCase repo path
 >             Just (Left x) -> return (Left x)
->             Just (Right x) -> incrementCase repo x
+>             Just (Right x) -> incrementCase x
 >     where
 >         (increment, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
@@ -385,9 +385,9 @@ algorithm in an 'inner' pure function.
 > rdiffIncrementGetFileStat repo path =
 >     rdiffIncrementBoilerPlate repo path rdiffCurrentGetFileStat incFn
 >     where
->         incFn _ x = case interpretIncFile file increment x of
->                         Left x -> return (Left x)
->                         Right x -> fileNameToFileStat (incdir </> x) >>= (return . Right)
+>         incFn x = case interpretIncFile file increment x of
+>                        Left x -> return (Left x)
+>                        Right x -> fileNameToFileStat (incdir </> x) >>= (return . Right)
 >         (increment, remainder) = rSplitPath path
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
@@ -426,7 +426,7 @@ or a increment filename (to derive stat information from)
 >         (inc, remainder) = rSplitPath dir
 >         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
 >         curFn a b = rdiffCurrentOpenDirectory a b >>= (return . Left)
->         incFn _ _ = do catch try handler
+>         incFn _ = do catch try handler
 >         try = do
 >             openDirStream incdir >>= closeDirStream
 >             return (Left eOK)
@@ -484,7 +484,7 @@ applied with first/fst etc. by the caller.
 > rdiffIncrementReadSymbolicLink repo path =
 >     rdiffIncrementBoilerPlate repo path rdiffCurrentReadSymbolicLink incFn
 >     where
->         incFn _ x = readSymbolicLink x >>= (return . Right)
+>         incFn x = readSymbolicLink x >>= (return . Right)
 
 > rdiffIncrementOpen :: RdiffContext -> FilePath -> OpenMode -> OpenFileFlags -> IO (Either Errno HT)
 > rdiffIncrementOpen repo path mode flags = do
@@ -494,9 +494,9 @@ applied with first/fst etc. by the caller.
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
 >         file = head $ replace [""] ["."] [takeFileName remainder]
->         incFn _ _ = case interpretIncFile file inc path of
->                         Left x -> return (Left x)
->                         Right x -> genericOpen mode (incdir </> x)
+>         incFn _ = case interpretIncFile file inc path of
+>                       Left x -> return (Left x)
+>                       Right x -> genericOpen mode (incdir </> x)
 >         curFn x y = rdiffCurrentOpen x y mode flags
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset
@@ -508,10 +508,10 @@ applied with first/fst etc. by the caller.
 >         incbase = repo </> "rdiff-backup-data" </> "increments"
 >         incdir  = incbase </> (takeDirectory remainder)
 >         file = head $ replace [""] ["."] [takeFileName remainder]
->         incFn _ _ = case interpretIncFile file inc path of
->                         Left x -> return (Left x)
->                         Right x -> do -- FIXME: doesn't handle suffixes properly
->                             stuff <- readFile (incdir </> x)
->                             return $ Right $ B.take (fromIntegral byteCount)
->                                            $ B.drop (fromIntegral offset) $ B.pack stuff
+>         incFn _ = case interpretIncFile file inc path of
+>                       Left x -> return (Left x)
+>                       Right x -> do -- FIXME: doesn't handle suffixes properly
+>                           stuff <- readFile (incdir </> x)
+>                           return $ Right $ B.take (fromIntegral byteCount)
+>                                          $ B.drop (fromIntegral offset) $ B.pack stuff
 >         curFn _ _ = rdiffCurrentRead repo path ht byteCount offset
