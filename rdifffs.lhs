@@ -421,6 +421,10 @@ or a increment filename (to derive stat information from)
 >     | otherwise = Right incfile
 >     where suffix = drop (length file + length inc + 1) incfile
 
+FIXME a bug below: "incdir" will correspond to a directory if *any* increment
+had a directory by that name, even if the current increment did not. We need
+to make use of the variable supplied to incFn.
+
 > rdiffIncrementOpenDirectory :: RdiffContext -> FilePath -> IO Errno
 > rdiffIncrementOpenDirectory repo dir = 
 >     rdiffIncrementBoilerPlate repo dir curFn incFn >>= return . (either id id)
