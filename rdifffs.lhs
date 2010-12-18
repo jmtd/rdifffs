@@ -19,6 +19,7 @@
 > import Control.Arrow -- first
 > import Codec.Compression.GZip
 > import qualified Data.ByteString.Lazy as L
+> import List -- sort
 
 The main method is so short I feel it's best to get it out of the way here.
 
@@ -526,3 +527,12 @@ applied with first/fst etc. by the caller.
 >             _          -> return (Left eINVAL)
 >         suffix incfile = drop (length file + length inc + 1) incfile
 >         curFn = rdiffCurrentRead repo path ht byteCount offset
+
+Return the increment temporally after the supplied argument, if there is one.
+
+> nextIncrement :: String -> [String] -> Maybe String
+> nextIncrement cur incrs = if length succs > 0
+>     then Just $ head succs
+>     else Nothing
+>     where succs = filter (\x -> x > cur) (sort incrs)
+
