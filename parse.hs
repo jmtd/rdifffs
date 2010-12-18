@@ -45,3 +45,7 @@ handle_rs_op_literal_n1 p = do
         len = ord $ head p
         took = take len (tail p)
         rem = drop (len + 1) p
+
+-- function signature we want:
+-- applyRdiff :: ByteString -> ByteString -> ByteString
+-- applyRdiff instream patchstream = ...
