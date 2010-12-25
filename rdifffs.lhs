@@ -20,6 +20,8 @@
 > import Codec.Compression.GZip
 > import qualified Data.ByteString.Lazy as L
 > import List -- sort
+> import System.IO -- hPutStrLn, stderr
+> import Rdiff
 
 The main method is so short I feel it's best to get it out of the way here.
 
@@ -82,7 +84,13 @@ The main method is so short I feel it's best to get it out of the way here.
 > getDates repo = do
 >     l <- getDirectoryContents $ repo </> "rdiff-backup-data"
 >     return $ (getCurrentMirror l) : (getIncrements l)
-> 
+
+Unpack a string from an RdiffBackup type
+
+> unRdiffBackup :: RdiffBackup -> String
+> unRdiffBackup (Current x) = x
+> unRdiffBackup (Increment x) = x
+
 > type HT = ()
 > 
 > rdiffFSOps :: RdiffContext -> FuseOperations HT
@@ -521,12 +529,29 @@ applied with first/fst etc. by the caller.
 >                 return $ Right $ B.concat $ L.toChunks $ L.take (fromIntegral byteCount)
 >                        $ L.drop (fromIntegral offset) $ stuff
 
->             ".diff.gz" -> return (Left eNOSYS)
+>             ".diff.gz" -> do
+>                 l <- getDates repo
+>                 case nextIncrement inc (map unRdiffBackup l) of
+>                     Nothing -> return (Left eINVAL)
+>                     Just ni -> do 
+>                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
+>                         -- XXX: implement bytestring rdiffPatch to avoid 'show'
+>                         case parsePatch (show patch) of
+>                           Left _ -> return (Left eINVAL) -- XXX: appropriate code?
+>                           Right pt -> do
+>                             -- we now have a string representing the next increment.
+>                             -- we need to fetch a file handle and/or file contents
+>                             -- for the requested file for that increment to use as input
+>                             -- for 'applyPatch'
+>                             --applyPatch pt infile
+>                             return (Left eNOSYS)
 >             ".missing" -> return (Left eNOENT)
 >             ".dir"     -> return (Left eISDIR)
 >             _          -> return (Left eINVAL)
 >         suffix incfile = drop (length file + length inc + 1) incfile
 >         curFn = rdiffCurrentRead repo path ht byteCount offset
+
+
 
 Return the increment temporally after the supplied argument, if there is one.
 
