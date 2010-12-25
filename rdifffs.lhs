@@ -586,10 +586,6 @@ one below.
 >                         case parsePatch (show patch) of
 >                           Left _ -> return (Left eINVAL) -- XXX: appropriate code?
 >                           Right pt -> do
->                             -- we now have a string representing the next increment.
->                             -- we need to fetch a file handle and/or file contents
->                             -- for the requested file for that increment to use as input
->                             -- for 'applyPatch'
 >                             foo <- incrementReadFile repo $ ni </> remainder
 >                             case foo of
 >                               Left x -> return (Left x)
