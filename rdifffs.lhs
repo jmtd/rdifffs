@@ -520,35 +520,12 @@ applied with first/fst etc. by the caller.
 > rdiffIncrementRead repo path ht byteCount offset = do
 >     rdiffIncrementBoilerPlate repo path curFn incFn
 >     where
->         (inc, remainder) = rSplitPath path
->         incbase = repo </> "rdiff-backup-data" </> "increments"
->         incdir  = incbase </> (takeDirectory remainder)
->         file = head $ replace [""] ["."] [takeFileName remainder]
->         incFn incfile = case suffix incfile of
->             ".snapshot.gz" -> do -- this is, probably, horrid.
->                 stuff <- fmap decompress $ L.readFile (incdir </> incfile)
->                 return $ Right $ B.concat $ L.toChunks $ L.take (fromIntegral byteCount)
->                        $ L.drop (fromIntegral offset) $ stuff
->             ".diff.gz" -> do
->                 l <- getDates repo
->                 case nextIncrement inc (map unRdiffBackup l) of
->                     Nothing -> return (Left eINVAL)
->                     Just ni -> do 
->                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
->                         -- XXX: implement bytestring rdiffPatch to avoid 'show'
->                         case parsePatch (show patch) of
->                           Left _ -> return (Left eINVAL) -- XXX: appropriate code?
->                           Right pt -> do
->                             -- we now have a string representing the next increment.
->                             -- we need to fetch a file handle and/or file contents
->                             -- for the requested file for that increment to use as input
->                             -- for 'applyPatch'
->                             --applyPatch pt infile
->                             return (Left eNOSYS)
->             ".missing" -> return (Left eNOENT)
->             ".dir"     -> return (Left eISDIR)
->             _          -> return (Left eINVAL)
->         suffix incfile = drop (length file + length inc + 1) incfile
+>         incFn incfile = do
+>             foo <- incrementReadFile repo path
+>             case foo of
+>                 Left x -> return (Left x)
+>                 Right x -> return $ Right $ B.take (fromIntegral byteCount)
+>                                   $ B.drop (fromIntegral offset) x
 >         curFn = rdiffCurrentRead repo path ht byteCount offset
 
 Return the increment temporally after the supplied argument, if there is one.
