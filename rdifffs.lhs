@@ -543,6 +543,7 @@ one below.
 
 > incrementReadFile :: RdiffContext -> FilePath -> IO (Either Errno B.ByteString)
 > incrementReadFile repo path = do
+>     hPutStrLn stderr "\t\t\t\t\t\tincrementReadFile"
 >     rdiffIncrementBoilerPlate repo path curFn incFn
 >     where
 >         (inc, remainder) = rSplitPath path
@@ -560,8 +561,11 @@ one below.
 >                     Just ni -> do 
 >                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
 >                         -- XXX: implement bytestring rdiffPatch to avoid 'show'
->                         case parsePatch (show patch) of
->                           Left _ -> return (Left eINVAL) -- XXX: appropriate code?
+>                         case parsePatch (show $ B.toString patch) of
+>                           Left x -> do
+>                             hPutStrLn stderr $ "\t\t\t\t\tparsePatch returned " ++ (show x)
+>                             hPutStrLn stderr $ "\t\t\t\t\tpatch was'" ++ (show $ B.toString patch) ++ "'"
+>                             return (Left eINVAL) -- XXX: appropriate code?
 >                           Right pt -> do
 >                             foo <- incrementReadFile repo $ ni </> remainder
 >                             case foo of
@@ -571,4 +575,6 @@ one below.
 >             ".dir"     -> return (Left eISDIR)
 >             _          -> return (Left eINVAL)
 >         suffix incfile = drop (length file + length inc + 1) incfile
->         curFn = undefined
+>         curFn = do
+>           hPutStrLn stderr "\t\t\t\t\t\tundefined curFn"
+>           undefined
