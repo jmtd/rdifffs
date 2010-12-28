@@ -210,6 +210,22 @@ directory and the /current symlink within.
 >     where
 >         (_:path) = fpath
 
+Lazy, whole-file version, for internal use
+
+> rdiffReadFile :: RdiffContext -> FilePath -> IO (Either Errno L.ByteString)
+> rdiffReadFile repo fpath = do
+>     which <- whichBackup repo path
+>     case which of
+>         CurrentBackup   -> rdiffCurrentReadFile repo path
+>         IncrementBackup -> do -- XXX: convert incrementReadFile to lazy
+>             strict <- incrementReadFile repo path
+>             case strict of
+>                 Left x  -> return (Left x)
+>                 Right x -> return $ Right $ L.fromChunks [x]
+>         Neither         -> return $ Left eNOENT
+>     where
+>         (_:path) = fpath
+
 > rdiffGetFileSystemStats :: String -> IO (Either Errno FileSystemStats)
 > rdiffGetFileSystemStats str =
 >   return $ Right $ FileSystemStats
@@ -553,7 +569,6 @@ one below.
 
 > incrementReadFile :: RdiffContext -> FilePath -> IO (Either Errno B.ByteString)
 > incrementReadFile repo path = do
->     hPutStrLn stderr "\t\t\t\t\t\tincrementReadFile"
 >     rdiffIncrementBoilerPlate repo path curFn incFn
 >     where
 >         (inc, remainder) = rSplitPath path
@@ -571,15 +586,12 @@ one below.
 >                     Just ni -> do 
 >                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
 >                         case parsePatch (L.unpack patch) of
->                           Left x -> do
->                             hPutStrLn stderr $ "\t\t\t\t\tparsePatch returned " ++ (show x)
->                             hPutStrLn stderr $ "\t\t\t\t\tpatch was'" ++ (L.unpack patch) ++ "'"
->                             return (Left eINVAL) -- XXX: appropriate code?
+>                           Left x -> return (Left eINVAL) -- XXX: appropriate code?
 >                           Right pt -> do
->                             foo <- incrementReadFile repo $ ni </> remainder
+>                             foo <- rdiffReadFile repo $ pathSeparator:(ni </> remainder)
 >                             case foo of
 >                               Left x -> return (Left x)
->                               Right x -> return $ Right $ B.pack $ applyPatch pt $ B.unpack x
+>                               Right x -> return $ Right $ B.pack $ applyPatch pt $ L.unpack x
 >             ".missing" -> return (Left eNOENT)
 >             ".dir"     -> return (Left eISDIR)
 >             _          -> return (Left eINVAL)
