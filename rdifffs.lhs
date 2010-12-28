@@ -18,7 +18,7 @@
 > import Foreign -- .&.
 > import Control.Arrow -- first
 > import Codec.Compression.GZip
-> import qualified Data.ByteString.Lazy as L
+> import qualified Data.ByteString.Lazy.Char8 as L
 > import List -- sort
 > import System.IO -- hPutStrLn, stderr
 > import Rdiff
@@ -561,10 +561,10 @@ one below.
 >                     Just ni -> do 
 >                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
 >                         -- XXX: implement bytestring rdiffPatch to avoid 'show'
->                         case parsePatch (show patch) of
+>                         case parsePatch (L.unpack patch) of
 >                           Left x -> do
 >                             hPutStrLn stderr $ "\t\t\t\t\tparsePatch returned " ++ (show x)
->                             hPutStrLn stderr $ "\t\t\t\t\tpatch was'" ++ (show patch) ++ "'"
+>                             hPutStrLn stderr $ "\t\t\t\t\tpatch was'" ++ (L.unpack patch) ++ "'"
 >                             return (Left eINVAL) -- XXX: appropriate code?
 >                           Right pt -> do
 >                             foo <- incrementReadFile repo $ ni </> remainder
