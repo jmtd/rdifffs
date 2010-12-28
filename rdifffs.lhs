@@ -336,11 +336,11 @@ fairly useful exception types.
 
 > rdiffCurrentRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset -> IO (Either Errno B.ByteString)
 > rdiffCurrentRead repo path _ byteCount offset = do
->     stuff <- readFile realpath
->     return $ Right $ B.take (fromIntegral byteCount) $ B.drop (fromIntegral offset) $ B.pack stuff
->     where
->           remainder = joinPath $ tail $ splitDirectories path
->           realpath = repo </> remainder
+>     stuff <- rdiffCurrentReadFile repo path
+>     case stuff of
+>         Left x -> return (Left x)
+>         Right x -> return $ Right $ B.concat $ L.toChunks $
+>                    L.take (fromIntegral byteCount) $ L.drop (fromIntegral offset) x
 
 Lazy whole-file read version.
 
@@ -351,8 +351,6 @@ Lazy whole-file read version.
 >     where
 >           remainder = joinPath $ tail $ splitDirectories path
 >           realpath = repo </> remainder
-
-
 
 ----------------------------------------------------------------------------
 increment helper functions
