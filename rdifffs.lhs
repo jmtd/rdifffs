@@ -560,7 +560,6 @@ one below.
 >                     Nothing -> return (Left eINVAL)
 >                     Just ni -> do 
 >                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
->                         -- XXX: implement bytestring rdiffPatch to avoid 'show'
 >                         case parsePatch (L.unpack patch) of
 >                           Left x -> do
 >                             hPutStrLn stderr $ "\t\t\t\t\tparsePatch returned " ++ (show x)
