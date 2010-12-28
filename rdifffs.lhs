@@ -342,6 +342,18 @@ fairly useful exception types.
 >           remainder = joinPath $ tail $ splitDirectories path
 >           realpath = repo </> remainder
 
+Lazy whole-file read version.
+
+> rdiffCurrentReadFile :: RdiffContext -> FilePath -> IO (Either Errno L.ByteString)
+> rdiffCurrentReadFile repo path = do 
+>     stuff <- L.readFile realpath
+>     return (Right stuff)
+>     where
+>           remainder = joinPath $ tail $ splitDirectories path
+>           realpath = repo </> remainder
+
+
+
 ----------------------------------------------------------------------------
 increment helper functions
 
@@ -575,5 +587,7 @@ one below.
 >             _          -> return (Left eINVAL)
 >         suffix incfile = drop (length file + length inc + 1) incfile
 >         curFn = do
->           hPutStrLn stderr "\t\t\t\t\t\tundefined curFn"
->           undefined
+>           stuff <- rdiffCurrentReadFile repo path
+>           case stuff of
+>               Left x -> return (Left x)
+>               Right x -> return (Right $ B.concat $ L.toChunks x)
