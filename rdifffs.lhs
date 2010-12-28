@@ -561,10 +561,10 @@ one below.
 >                     Just ni -> do 
 >                         patch <- fmap decompress $ L.readFile (incdir </> incfile)
 >                         -- XXX: implement bytestring rdiffPatch to avoid 'show'
->                         case parsePatch (show $ B.toString patch) of
+>                         case parsePatch (show patch) of
 >                           Left x -> do
 >                             hPutStrLn stderr $ "\t\t\t\t\tparsePatch returned " ++ (show x)
->                             hPutStrLn stderr $ "\t\t\t\t\tpatch was'" ++ (show $ B.toString patch) ++ "'"
+>                             hPutStrLn stderr $ "\t\t\t\t\tpatch was'" ++ (show patch) ++ "'"
 >                             return (Left eINVAL) -- XXX: appropriate code?
 >                           Right pt -> do
 >                             foo <- incrementReadFile repo $ ni </> remainder
