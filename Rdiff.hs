@@ -3,16 +3,22 @@
     haskell-librsync - an attempt to write a Haskell library to read/write
     /apply rdiff patches etc.
 
+    Presently lives inside the source code for rdifffs and only implements
+    the minimum necessary to support that program: namely parsing and applying
+    rdiff patches.
+
+    Copyright © 2010 Jon Dowland
+    See "LICENSE" for copyright information.
  -}
 
 module Rdiff
     (
-      RdiffCommand 
-    , rdiffPatch 
-    , applyPatch 
-    , applyPatchFile 
-    , parsePatch 
-    , runtests 
+      RdiffCommand
+    , rdiffPatch
+    , applyPatch
+    , applyPatchFile
+    , parsePatch
+    , runtests
     ) where
 
 import Text.ParserCombinators.Parsec
