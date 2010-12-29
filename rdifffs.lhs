@@ -217,8 +217,8 @@ Lazy, whole-file version, for internal use
 >     which <- whichBackup repo path
 >     case which of
 >         CurrentBackup   -> rdiffCurrentReadFile repo path
->         IncrementBackup -> do -- XXX: convert incrementReadFile to lazy
->             strict <- incrementReadFile repo path
+>         IncrementBackup -> do -- XXX: convert rdiffIncrementReadFile to lazy
+>             strict <- rdiffIncrementReadFile repo path
 >             case strict of
 >                 Left x  -> return (Left x)
 >                 Right x -> return $ Right $ L.fromChunks [x]
@@ -508,10 +508,8 @@ TODO: we need to handle a failure from getDirectoryContents (exception?)
 >   dirfiles  = map (second (\_->(defaultDir ctx))) (fetch ".dir")
 >   fetch s = getBySuffix ('.':incr) $ getBySuffix s increDirectory
 
-returns sublist of strings which have the provided suffix,
-with the suffix removed
-
-I think this would be nicer operating purely on Strings, and being
+returns sublist of strings which have the provided suffix, with the suffix
+removed.  I think this would be nicer operating purely on Strings, and being
 applied with first/fst etc. by the caller.
 
 > getBySuffix :: String -> [Fpair] -> [Fpair]
@@ -540,6 +538,7 @@ applied with first/fst etc. by the caller.
 >                       Right x -> genericOpen mode (incdir </> incfile)
 >         curFn = rdiffCurrentOpen repo path mode flags
 
+handle the offset and count side of reading, leave the rest to rdiffIncrementReadFile
 
 > rdiffIncrementRead :: RdiffContext -> FilePath -> HT -> ByteCount -> FileOffset
 >     -> IO (Either Errno B.ByteString)
@@ -547,28 +546,17 @@ applied with first/fst etc. by the caller.
 >     rdiffIncrementBoilerPlate repo path curFn incFn
 >     where
 >         incFn incfile = do
->             foo <- incrementReadFile repo path
+>             foo <- rdiffIncrementReadFile repo path
 >             case foo of
 >                 Left x -> return (Left x)
 >                 Right x -> return $ Right $ B.take (fromIntegral byteCount)
 >                                   $ B.drop (fromIntegral offset) x
 >         curFn = rdiffCurrentRead repo path ht byteCount offset
 
-Return the increment temporally after the supplied argument, if there is one.
+A lazy, whole-file increment file reader.
 
-> nextIncrement :: String -> [String] -> Maybe String
-> nextIncrement cur incrs = if length succs > 0
->     then Just $ head succs
->     else Nothing
->     where succs = filter (\x -> x > cur) (sort incrs)
-
-A version of incrementReadFile which simply returns the entire contents as a string.
-(for now it's mostly a copy of the one above.)
-It probably makes sense to rewrite the original one, above, in terms of the simplified
-one below.
-
-> incrementReadFile :: RdiffContext -> FilePath -> IO (Either Errno B.ByteString)
-> incrementReadFile repo path = do
+> rdiffIncrementReadFile :: RdiffContext -> FilePath -> IO (Either Errno B.ByteString)
+> rdiffIncrementReadFile repo path = do
 >     rdiffIncrementBoilerPlate repo path curFn incFn
 >     where
 >         (inc, remainder) = rSplitPath path
@@ -601,3 +589,11 @@ one below.
 >           case stuff of
 >               Left x -> return (Left x)
 >               Right x -> return (Right $ B.concat $ L.toChunks x)
+
+Return the increment temporally after the supplied argument, if there is one.
+
+> nextIncrement :: String -> [String] -> Maybe String
+> nextIncrement cur incrs = if length succs > 0
+>     then Just $ head succs
+>     else Nothing
+>     where succs = filter (\x -> x > cur) (sort incrs)
