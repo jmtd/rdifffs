@@ -26,8 +26,7 @@ containsCopy fp = do
       c <- readFile fp
       case parsePatch p of
         Left _ -> return False
-        Right ps -> do
-          return $ length (filter isCopyCommand ps) > 0
+        Right ps -> return $ length (filter isCopyCommand ps) > 0
     else return False
 
 main = do
