@@ -13,7 +13,7 @@
 
 module Rdiff
     (
-      RdiffCommand
+      RdiffCommand(..)
     , rdiffPatch
     , applyPatch
     , applyPatchFile
