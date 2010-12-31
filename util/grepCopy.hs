@@ -24,7 +24,7 @@ containsCopy fp = do
   e <- fileExist fp
   if e then do
       c <- readFile fp
-      case parsePatch p of
+      case parsePatch c of
         Left _ -> return False
         Right ps -> return $ length (filter isCopyCommand ps) > 0
     else return False
