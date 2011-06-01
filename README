@@ -40,6 +40,7 @@ Building/Installing rdifffs
       * HFuse, <http://code.haskell.org/hfuse>
       * MissingH, <http://software.complete.org/missingh>
       * parsec (version 2.1.0.1), <http://www.cs.uu.nl/~daan/parsec.html>
+      * zlib, <http://hackage.haskell.org/package/zlib/>
 
     Install these via cabal, or apt on a Debian system (at the time of
     writing, HFuse is in the NEW queue waiting to join Debian sid).
