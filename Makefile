@@ -1,7 +1,7 @@
 all: rdifffs
 
-rdifffs: rdifffs.lhs Rdiff.o
-	ghc -threaded --make rdifffs.lhs
+rdifffs: rdifffs.hs Rdiff.o
+	ghc -threaded --make rdifffs.hs
 
 Rdiff.o: Rdiff.hs
 	ghc -c Rdiff.hs

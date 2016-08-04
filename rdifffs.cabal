@@ -11,7 +11,7 @@ Stability:         Alpha
 Category:          System
 build-type:        Simple
 Executable rdifffs
-  Main-is:         rdifffs.lhs
+  Main-is:         rdifffs.hs
   Build-Depends:   base >= 2.0, MissingH >= 1.1.0.3,
                    parsec >= 2.1.0.1,
                    HFuse >= 0.2.3, bytestring >= 0.9.1.5,
