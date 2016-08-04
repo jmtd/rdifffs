@@ -13,14 +13,14 @@
 > import Text.Regex.Posix
 > import Data.String.Utils -- replace (from libghc6-missingh-dev)
 > import System.Posix.Directory
-> import Data.List -- isInfixOf, isSuffixOf
+> import Data.List -- isInfixOf, isSuffixOf, sort
 > import Data.Maybe -- mapMaybe
 > import Foreign -- .&.
 > import Control.Arrow -- first
 > import Codec.Compression.GZip
 > import qualified Data.ByteString.Lazy.Char8 as L
-> import List -- sort
 > import System.IO -- hPutStrLn, stderr
+> import Control.Exception -- catch, try
 > import Rdiff
 
 The main method is so short I feel it's best to get it out of the way here.
@@ -330,13 +330,15 @@ be to just getDirectoryContents, which is in System.Directory and returns some
 fairly useful exception types.
 
 > rdiffCurrentOpenDirectory :: RdiffContext -> FilePath -> IO Errno
-> rdiffCurrentOpenDirectory repo dir = do catch try handler where
->     realdir = joinPath $ repo:(tail $ splitDirectories dir)
->     try = do
->         ds <- openDirStream realdir
->         closeDirStream ds
->         return eOK
->     handler e = return eACCES
+> rdiffCurrentOpenDirectory repo dir = do
+>     eds <- try $ openDirStream realdir :: IO (Either IOError DirStream)
+>     case eds of
+>         Left _  -> return eACCES
+>         Right ds -> do
+>             closeDirStream ds
+>             return eOK
+>     where
+>         realdir = joinPath $ repo:(tail $ splitDirectories dir)
 
 > genericOpen mode path = case mode of
 >         ReadOnly -> do             -- Read Write Execute
@@ -467,11 +469,13 @@ to make use of the variable supplied to incFn.
 >         (inc, remainder) = rSplitPath dir
 >         incdir = repo </> "rdiff-backup-data" </> "increments" </> remainder
 >         curFn = rdiffCurrentOpenDirectory repo dir >>= (return . Left)
->         incFn _ = do catch try handler
->         try = do
->             openDirStream incdir >>= closeDirStream
->             return (Left eOK)
->         handler e = return (Left eACCES)
+>         incFn _ = do
+>             eds <- try $ openDirStream incdir :: IO (Either IOError DirStream)
+>             case eds of
+>                 Left _ -> return (Left eACCES)
+>                 Right ds -> do
+>                     closeDirStream ds
+>                     return (Right eOK)
 
 Get the directory contents for the relevant increments directory and the
 corresponding FileStat information. Pass, along with the readDirectory output

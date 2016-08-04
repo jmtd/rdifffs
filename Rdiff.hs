@@ -23,7 +23,7 @@ module Rdiff
 
 import Text.ParserCombinators.Parsec
 import Data.Char -- chr
-import Ix -- range
+import Data.Ix -- range
 import Data.Either.Utils -- fromRight (missingh)
 
  -- rdiff patches always begin with this

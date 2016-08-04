@@ -3,7 +3,7 @@ Version:           0.1
 Synopsis:          virtual filesystem for exploring rdiff-backup backups
 Author:            Jon Dowland <jon+rdifffs@dowland.me>
 Maintainer:        Jon Dowland <jon+rdifffs@dowland.me>
-Homepage:          http://jmtd.net/computing/software/rdifffs/
+Homepage:          https://jmtd.net/software/rdifffs/
 License:           BSD3
 License-file:      LICENSE
 Cabal-Version:     >= 1.2
@@ -13,7 +13,7 @@ build-type:        Simple
 Executable rdifffs
   Main-is:         rdifffs.lhs
   Build-Depends:   base >= 2.0, MissingH >= 1.1.0.3,
-                   parsec >= 2.1.0.1, haskell98 >= 1.0.1.1,
+                   parsec >= 2.1.0.1,
                    HFuse >= 0.2.3, bytestring >= 0.9.1.5,
                    zlib >= 0.5.2.0, unix >= 2.4.0.0,
                    regex-posix >= 0.94.1, filepath >= 1.1.0.3,
