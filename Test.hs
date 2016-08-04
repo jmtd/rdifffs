@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
 {-
 
     haskell-librsync - an attempt to write a Haskell library to read/write
@@ -15,32 +16,30 @@
 
 module Main where
 
-import Rdiff -- runtests
+import Test.Framework
+import Data.Either -- isLeft, isRight
 import Data.Either.Utils -- fromRight (missingh)
 import Data.Char -- chr
-import Text.ParserCombinators.Parsec -- parse, I think
+import Text.ParserCombinators.Parsec -- parse
 
--- test data
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft (Right _) = False
-isRight = not . isLeft
+import Rdiff
 
-goodpatches = [
-      magic ++ "\0"
-    , magic ++ (chr 0x02):"hi\0"
-    , magic ++ (chr 0x41):"\5hello\0"
-    , magic ++ (chr 0x45):"\0\0\0"
-    ]
-badpatches = [
-      "no magic\0"
-    , magic -- no null
-    , magic ++ "\256not a command\0" 
-    , magic ++ [chr 0x41, '\0'] -- missing argument
-    , magic ++ [chr 0x45, '\0'] -- missing argument
-    , magic ++ (chr 0x45):"\0\0" -- missing argument
-    , magic ++ (chr 0x41):"\6\0" -- missing data
-    ]
+testWrap x = assertBool $ (isRight . p) x
+
+test_goodpatch_empty  = testWrap $ magic ++ "\0"
+test_goodpatch_short  = testWrap $ magic ++ (chr 0x02):"hi\0"
+test_goodpatch_longer = testWrap $ magic ++ (chr 0x41):"\5hello\0"
+test_goodpatch_dunno  = testWrap $ magic ++ (chr 0x45):"\0\0\0"
+
+badWrap x = assertBool $ (isLeft . p) x
+
+test_badpatch_nomagic      = badWrap $ "no magic\0"
+test_badpatch_nonull       = badWrap $ magic
+test_badpatch_command      = badWrap $ magic ++ "\256not a command\0"
+test_badpatch_missing_arg1 = badWrap $ magic ++ [chr 0x41, '\0']
+test_badpatch_missing_arg2 = badWrap $ magic ++ [chr 0x45, '\0']
+test_badpatch_missing_arg3 = badWrap $ magic ++ (chr 0x45):"\0\0"
+test_badpatch_missing_data = badWrap $ magic ++ (chr 0x41):"\6\0"
 
 prop_literal str = [LiteralCommand str] == fromRight (p $
     magic ++ [chr 0x41, chr $ length str] ++ str ++ "\0")
@@ -49,11 +48,8 @@ p x = parse rdiffPatch "" x
 
 -- real test data!
 patch  = "rs\STX6A\GSThu Feb  4 18:18:18 GMT 2010\n\NUL"
-output = "Thu Feb  4 18:18:18 GMT 2010\n"
-prop_realpatch = applyPatch (fromRight $ p patch) "" == output
+my_output = "Thu Feb  4 18:18:18 GMT 2010\n"
 
-runtests = prop_realpatch : (map (isRight . p) goodpatches) ++ (map (isLeft . p) badpatches)
+prop_realpatch = applyPatch (fromRight $ p patch) "" == my_output
 
-main :: IO ()
-main = do
-    mapM_ putStrLn $ map show runtests
+main = htfMain htf_thisModulesTests
