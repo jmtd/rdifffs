@@ -64,7 +64,7 @@ HFuse which may no longer exist).
 
 ## Author, Copyright
 
-Copyright © 2010-2016 Jonathan Dowland <jon@dow.land>
+Copyright © 2010-2016 Jonathan Dowland <jon+rdifffs@dow.land>
 
 `rdifffs` is distributed under the terms of the BSD 3-clause license.
 See [LICENSE](LICENSE) for copyright information.
