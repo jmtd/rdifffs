@@ -1,4 +1,4 @@
-module Main where
+module RDiffFS (rdiffFSMain) where
 
 import qualified Data.ByteString.Char8 as B
 import Foreign.C.Error
@@ -25,8 +25,8 @@ import Rdiff
 
 -- The main method is so short I feel it's best to get it out of the way here.
 
-main :: IO ()
-main = do
+rdiffFSMain :: IO ()
+rdiffFSMain = do
     args <- getArgs
     verifyArgs args
     path <- canonicalizePath $ head args

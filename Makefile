@@ -1,7 +1,7 @@
 all: rdifffs Test
 
 rdifffs: rdifffs.hs Rdiff.o
-	ghc -threaded --make rdifffs.hs
+	ghc -threaded --make -main-is RDiffFS.rdiffFSMain -o rdifffs RDiffFS.hs
 
 Rdiff.o: Rdiff.hs
 	ghc -c Rdiff.hs
